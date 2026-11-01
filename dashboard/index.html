@@ -1,0 +1,2128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent control room</title>
+<style>
+:root{
+  --bg:#f4f5f7;--panel:#fff;--panel2:#eef0f4;--text:#1b1f27;--muted:#596276;--line:#cfd5df;
+  --run:#1d4ed8;--run-bg:#dbe7ff;--done:#166534;--done-bg:#d9f2e1;--fail:#c62828;--fail-bg:#fde0e0;
+  --idle:#8a4f00;--idle-bg:#ffecc7;--stop:#8a4b5a;--stop-bg:#f1dfe4;--pend:#565e70;--pend-bg:#e6e9ef;--on-solid:#fff;
+  --shadow:0 1px 2px rgba(20,30,50,.08),0 2px 8px rgba(20,30,50,.05);
+  --m-opus:#7c3aed;--m-opus-bg:#ece4fd;--m-sonnet:#0a6670;--m-sonnet-bg:#d6f0f2;--m-haiku:#c2255c;--m-haiku-bg:#fbe0ea;--m-other:#565e70;--m-other-bg:#e6e9ef;
+  --fs-xs:11px;--fs-s:12px;--fs-m:13px;--fs-l:15px;--fs-xl:17px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1218;--panel:#181c25;--panel2:#212633;--text:#e6e9f0;--muted:#8d97ab;--line:#303748;
+  --run:#6ea0ff;--run-bg:#1b2c52;--done:#4ade80;--done-bg:#12301d;--fail:#ff7b7b;--fail-bg:#3a1a1c;
+  --idle:#fbbf24;--idle-bg:#3a2d0e;--stop:#e39aae;--stop-bg:#34202a;--pend:#9aa3b6;--pend-bg:#262c3a;--on-solid:#0f1218;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+  --m-opus:#b79bff;--m-opus-bg:#2c2150;--m-sonnet:#5fd4de;--m-sonnet-bg:#103a40;--m-haiku:#ff8fb5;--m-haiku-bg:#451a2c;--m-other:#9aa3b6;--m-other-bg:#262c3a;
+}}
+:root[data-theme="dark"]{
+  --bg:#0f1218;--panel:#181c25;--panel2:#212633;--text:#e6e9f0;--muted:#8d97ab;--line:#303748;
+  --run:#6ea0ff;--run-bg:#1b2c52;--done:#4ade80;--done-bg:#12301d;--fail:#ff7b7b;--fail-bg:#3a1a1c;
+  --idle:#fbbf24;--idle-bg:#3a2d0e;--stop:#e39aae;--stop-bg:#34202a;--pend:#9aa3b6;--pend-bg:#262c3a;--on-solid:#0f1218;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+  --m-opus:#b79bff;--m-opus-bg:#2c2150;--m-sonnet:#5fd4de;--m-sonnet-bg:#103a40;--m-haiku:#ff8fb5;--m-haiku-bg:#451a2c;--m-other:#9aa3b6;--m-other-bg:#262c3a;
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{overflow-x:clip}
+body.open{overflow:hidden}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;font-size:var(--fs-s)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--run);outline-offset:2px}
+[role="button"]{cursor:pointer}
+[role="button"]:focus-visible{outline:2px solid var(--run);outline-offset:1px;border-radius:6px}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:7px 16px;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center}
+@media (max-height:760px){header{position:static}}
+.hid{min-width:0}
+h1{font-size:var(--fs-l);margin:0;letter-spacing:.02em;line-height:1.25}
+.sub{color:var(--muted);font-size:var(--fs-s)}
+.stats{display:flex;flex-wrap:wrap;gap:5px}
+.stat{padding:2px 8px;border-radius:999px;font-weight:600;font-size:var(--fs-s);background:var(--pend-bg);color:var(--pend);white-space:nowrap}
+.stat b{font-size:var(--fs-m);margin-right:4px}
+.stat.running{background:var(--run-bg);color:var(--run)}.stat.done{background:var(--done-bg);color:var(--done)}
+.stat.failed{background:var(--fail-bg);color:var(--fail)}.stat.idle{background:var(--idle-bg);color:var(--idle)}
+.stat.killed{background:var(--stop-bg);color:var(--stop)}
+/* usage bars: on the pills' row when it has room, else one row below; each bar is one label line over its track */
+.bars{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:3px 18px;flex:1 1 400px;min-width:0;margin-left:auto}
+.bar{flex:1 1 230px;max-width:300px;min-width:170px}
+.bars .sub{flex:1 1 200px;order:-1;text-align:right;font-size:var(--fs-xs);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.toolrow{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:6px 12px;margin-bottom:8px}
+.toolrow .filters{margin-bottom:0;flex:1 1 auto;min-width:0}
+.tools{display:flex;gap:8px;align-items:center;flex-shrink:0;margin-left:auto}
+.bar .lbl{display:flex;align-items:baseline;gap:0 6px;font-size:var(--fs-xs);color:var(--muted);white-space:nowrap;min-width:0}
+.bar .lbl .pc{font-weight:600;color:var(--text)}
+.bar .lbl .rs{margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.bar .track{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:2px}
+.bar .fill{height:100%;background:var(--done)}
+.bar.warn .fill{background:var(--idle)}.bar.hot .fill{background:var(--fail)}
+.bar.warn .lbl .pc{color:var(--idle);font-weight:700}.bar.hot .lbl .pc{color:var(--fail);font-weight:700}
+.iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:3px 9px;font-size:var(--fs-s)}
+.banner{margin:10px 16px 0;padding:8px 12px;border-radius:8px;background:var(--fail-bg);color:var(--fail);font-weight:600}
+.banner.info{background:var(--idle-bg);color:var(--idle)}
+main{padding:10px 16px 24px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin:0 auto}
+/* desktop: the app fills the window under the header; the tree box and the side column each scroll inside themselves */
+@media (min-width:1050px){
+  body{display:flex;flex-direction:column;height:100vh}
+  header,#banners{flex:none}
+  header{position:static}
+  main{flex:1 1 auto;width:100%;min-height:420px;padding-bottom:12px;grid-template-columns:minmax(0,1fr) 18px clamp(260px,var(--side-w,370px),calc(60% - 18px));grid-template-rows:minmax(0,1fr);column-gap:0;align-items:stretch}
+  main>section{display:flex;flex-direction:column;min-height:0}
+  main>section>#treeView{flex:1 1 auto;height:auto;min-height:0}
+  main>aside{display:flex;flex-direction:column;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 4px 8px 2px;margin:0 -4px 0 -2px}
+  #needPanel.quiet{order:1}
+  main>aside.custom>#needPanel.quiet{order:0}
+  #colDiv{display:flex;position:relative;min-height:0;justify-content:center;align-items:center;cursor:col-resize;touch-action:none;border-radius:6px}
+}
+.filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+.filters button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 12px;font-size:var(--fs-s)}
+.filters button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:var(--pend-bg);color:var(--pend)}
+.pill.running{background:var(--run-bg);color:var(--run)}.pill.done,.pill.pass{background:var(--done-bg);color:var(--done)}
+.pill.failed,.pill.fail{background:var(--fail-bg);color:var(--fail)}.pill.idle{background:var(--idle-bg);color:var(--idle)}
+.pill.killed,.pill.stopped{background:var(--stop-bg);color:var(--stop)}
+.pill.na{background:transparent;border:1px dashed var(--line);color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:7px 0}
+.chip{padding:2px 8px;border-radius:6px;font-size:var(--fs-xs);font-weight:600;background:var(--pend-bg);color:var(--pend);border:1px solid transparent}
+.chip.running{background:var(--run-bg);color:var(--run);animation:pulse 1.6s ease-in-out infinite}
+.chip.done{background:var(--done-bg);color:var(--done)}.chip.failed{background:var(--fail-bg);color:var(--fail)}
+.chip.idle{background:var(--idle-bg);color:var(--idle)}.chip.stopped{background:var(--stop-bg);color:var(--stop)}
+.chip.skipped,.chip.pending{border:1px dashed var(--line);background:transparent}
+@keyframes pulse{50%{opacity:.75}}
+.dot.running{animation:dotpulse 1.6s ease-in-out infinite}
+@keyframes dotpulse{0%,100%{box-shadow:0 0 0 0 var(--run)}50%{box-shadow:0 0 0 4px transparent}}
+@media (prefers-reduced-motion:reduce){.chip.running,.dot.running{animation:none}}
+#side .agent{display:flex;gap:6px;align-items:center;font-size:var(--fs-s);padding:2px 0;min-width:0}
+#side .agent .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--pend);flex:none}
+.dot.running{background:var(--run)}.dot.done{background:var(--done)}.dot.failed{background:var(--fail)}.dot.idle{background:var(--idle)}.dot.stopped{background:var(--stop)}
+.badge{font-size:10.5px;padding:0 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.badge.eta{color:var(--run);border-color:var(--run)}
+.muted{color:var(--muted)}.small{font-size:var(--fs-s)}
+.err{color:var(--fail);font-size:var(--fs-s);overflow-wrap:anywhere}
+.git{margin-top:6px;font-size:var(--fs-s);color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px;box-shadow:var(--shadow);margin-bottom:12px}
+/* one label style for panel headings, drawer headings, summary keys and table headings */
+.panel h2,#drawer h4,.sumry .k,.ut .hd,.ucols .k,.subh{font-size:var(--fs-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.panel h2{margin:0 0 8px}
+.subh{margin:12px 0 4px}
+.train{border-top:1px solid var(--line);padding:7px 0}
+.train:first-of-type{border-top:0}
+.events{max-height:420px;overflow:auto}
+#wts{max-height:260px;overflow:auto}
+.ev{font-size:var(--fs-s);padding:2px 0;border-top:1px solid var(--line);display:flex;gap:8px}
+.ev:first-child{border-top:0}.ev time{color:var(--muted);flex:none;width:52px}.ev span{overflow-wrap:anywhere}
+.wt{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:2px 8px;font-size:var(--fs-s);align-items:center}
+.wt div:nth-child(3n+1){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.panel[hidden]{display:none}
+.sumry.spaced p{margin:12px 0}
+.ut{display:grid;grid-template-columns:minmax(92px,auto) minmax(0,1fr) minmax(0,1fr);column-gap:16px;row-gap:14px;margin:6px 0 2px;font-size:var(--fs-m);align-items:start}
+.ut .hd{align-self:end;line-height:1.25}
+.ut .hd.r,.ut .r{text-align:right}
+.ut .lb{color:var(--muted)}
+.ut .num{font-weight:600;font-variant-numeric:tabular-nums}
+.ut .num.over{color:var(--idle)}
+.ut .pc{height:4px;border-radius:2px;background:var(--line);margin-top:5px;overflow:hidden}
+.ut .pc i{display:block;height:100%;background:var(--run)}
+.ut .pc.over i{background:var(--idle)}
+.ut .pct{font-size:var(--fs-xs);color:var(--muted);text-align:right;margin-top:2px}
+.ut .pct.over{color:var(--idle);font-weight:700}
+.ucols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 14px;margin-top:8px}
+.ucols .c{display:flex;flex-direction:column;min-width:0}
+.ucols .v{font-size:var(--fs-m);font-weight:600;font-variant-numeric:tabular-nums}
+.ucols .v.over{color:var(--idle)}
+.ucols .t{font-size:var(--fs-xs);color:var(--muted)}
+@media (max-width:600px){
+  .ut{grid-template-columns:84px minmax(0,1fr) minmax(0,1fr);column-gap:10px}
+  .ucols{grid-template-columns:1fr;gap:4px}
+  .ucols .c{flex-direction:row;justify-content:space-between;align-items:baseline;gap:8px}
+  .ucols .k{flex:1}
+  .ucols .t{order:3;min-width:84px;text-align:right}
+}
+.projsel{font:inherit;font-size:var(--fs-s);color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 8px;max-width:220px;text-overflow:ellipsis}
+.projsel[hidden]{display:none}
+.age.stale{color:var(--idle);font-weight:700}
+.tn .tg circle.hit{fill:transparent;stroke:none}
+@media (pointer:coarse),(max-width:700px){
+  button,.iconbtn,.filters button,.minibtn,.projsel{min-height:44px;min-width:44px;padding-top:6px;padding-bottom:6px}
+  #plan .task.task{min-height:44px;align-items:flex-start;padding-top:12px;padding-bottom:12px}
+  #plan .taskagent.taskagent{padding-top:10px;padding-bottom:10px;min-height:44px;align-items:center}
+  .need,.kv.lnk{min-height:44px;align-items:center}
+  .tv-tools .iconbtn{min-width:48px}
+}
+@media (max-width:700px){
+  .tv-tools.tv-tools{top:auto;bottom:8px;height:auto;align-items:center}.tv-hint{display:none}
+  .toolrow .filters{flex:1 1 100%}
+  .tools{flex:1 1 100%;min-width:0;margin-left:0;justify-content:flex-end}
+  .projsel{flex:1;min-width:0;max-width:none}
+}
+#treeView{position:relative;height:calc(100vh - 150px);min-height:420px;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
+#treeView[hidden]{display:none}
+#treeSvg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;user-select:none}
+#treeSvg.drag{cursor:grabbing}
+.tv-tools{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:2;background:var(--panel);padding:4px;border-radius:10px;box-shadow:var(--shadow)}
+.tv-hint{position:absolute;left:10px;bottom:8px;font-size:var(--fs-xs);color:var(--muted);z-index:2;pointer-events:none;background:var(--panel);background:color-mix(in srgb,var(--panel) 88%,transparent);padding:2px 8px;border-radius:6px}
+.tv-hint.gone{display:none}
+.tv-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:var(--fs-m);pointer-events:none}
+#treeView.wait .tv-tools,#treeView.wait .tv-hint{display:none}
+#treeView:not(.wait) .tv-empty{display:none}
+.tn rect.box{fill:var(--panel2);stroke:var(--line);stroke-width:1.5;filter:drop-shadow(0 3px 5px rgba(0,0,0,.30))}
+.tn .stripe{fill:var(--pend)}
+.tn.running .stripe{fill:var(--run)}.tn.done .stripe{fill:var(--done)}.tn.failed .stripe{fill:var(--fail)}.tn.idle .stripe{fill:var(--idle)}.tn.killed .stripe,.tn.stopped .stripe{fill:var(--stop)}
+.tn{cursor:pointer;outline:none}.tn text{fill:var(--text);font:600 12px system-ui,-apple-system,"Segoe UI",sans-serif;pointer-events:none}
+.tn text.t{font:700 15px system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.01em}
+.tn text.t2{font:700 13px system-ui,-apple-system,"Segoe UI",sans-serif}
+.tn text.t3{font:600 12px system-ui,sans-serif}
+.tn text.m{font:500 12px system-ui,-apple-system,"Segoe UI",sans-serif}
+.tn text.g{font:11px ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;fill:var(--muted);font-weight:400}
+.tn text.s{font-weight:400;font-size:12px;fill:var(--muted)}
+.tn text.st{font-weight:600;fill:var(--muted)}.tn.lead.running text.st{fill:var(--run)}
+.sp rect{fill:var(--pend-bg);stroke:none}.sp text{font:700 10.5px system-ui,sans-serif;fill:var(--pend);text-anchor:middle;letter-spacing:.05em}
+.sp.sm text{font-size:9.5px}
+.tn.slim rect.box,.tn.group rect.box{filter:none}
+.sp.running rect{fill:var(--run)}.sp.failed rect{fill:var(--fail)}
+.sp.running text,.sp.failed text{fill:var(--on-solid)}
+.sp.done rect{fill:var(--done-bg)}.sp.done text{fill:var(--done)}
+.sp.idle rect{fill:var(--idle-bg)}.sp.idle text{fill:var(--idle)}
+.sp.killed rect,.sp.stopped rect{fill:var(--stop-bg)}.sp.killed text,.sp.stopped text{fill:var(--stop)}
+#treeSvg.far .tn text.s,#treeSvg.far .tn text.g,#treeSvg.far .tn text.m{display:none}
+.tn.running rect.box{fill:var(--run-bg);stroke:var(--run)}.tn.done rect.box{stroke:var(--done)}.tn.failed rect.box{fill:var(--fail-bg);stroke:var(--fail)}
+.tn.idle rect.box{fill:var(--idle-bg);stroke:var(--idle)}.tn.killed rect.box,.tn.stopped rect.box{fill:var(--stop-bg);stroke:var(--stop)}
+.tn.pending rect.box,.tn.skipped rect.box{stroke-dasharray:4 3;fill:transparent}
+.tn.lead rect.box{stroke-width:2.5;stroke:var(--run)}.tn.lead text.t{font-size:15px}
+.tn .tg circle{fill:var(--panel);stroke:var(--muted);stroke-width:1.5}.tn .tg text{fill:var(--muted);font-size:13px;text-anchor:middle}
+.mb rect{fill:var(--m-other-bg);stroke:var(--m-other)}.mb text{fill:var(--m-other);font:700 11px system-ui,sans-serif;text-anchor:middle}
+.mb.m-opus rect{fill:var(--m-opus-bg);stroke:var(--m-opus)}.mb.m-opus text{fill:var(--m-opus)}
+.mb.m-sonnet rect{fill:var(--m-sonnet-bg);stroke:var(--m-sonnet)}.mb.m-sonnet text{fill:var(--m-sonnet)}
+.mb.m-haiku rect{fill:var(--m-haiku-bg);stroke:var(--m-haiku)}.mb.m-haiku text{fill:var(--m-haiku)}
+.mb.bare rect{stroke-dasharray:3 2}
+.tn.focus rect.box{stroke-width:3.5;stroke:var(--run);filter:drop-shadow(0 0 6px var(--run))}
+.tn:focus-visible rect.box{stroke:var(--run);stroke-width:3;stroke-dasharray:none}
+.tn.dim{opacity:.28}
+.tn.agent.loop rect.box{stroke:var(--fail);stroke-width:2.5}.tn.agent.loop text.s{fill:var(--fail)}
+@keyframes tflash{0%{stroke-width:7}100%{stroke-width:1.5}}
+.tn.changed rect.box{animation:tflash 2.6s ease-out}
+@media (prefers-reduced-motion:reduce){.tn.changed rect.box{animation:none}}
+.lk{fill:none;stroke:var(--line);stroke-width:1.6}
+.lk.run{stroke:var(--run)}
+.lk.live{stroke:var(--run);stroke-dasharray:6 5;animation:flow 2.4s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-11}}
+@media (prefers-reduced-motion:reduce){.lk.live{animation:none}}
+.need{display:flex;gap:8px;align-items:flex-start;padding:4px 0;border-top:1px solid var(--line);font-size:var(--fs-s)}
+.need:first-child{border-top:0}
+.need .sev{flex:none;width:8px;height:8px;border-radius:50%;margin-top:5px;background:var(--pend)}
+.need .sev.high{background:var(--fail)}.need .sev.med{background:var(--idle)}.need .sev.ok{background:var(--done)}
+.need b{display:block;font-size:var(--fs-s)}.need span.t{overflow-wrap:anywhere;min-width:0}
+.sumry{border-left:4px solid var(--run);background:var(--panel2);border-radius:8px;padding:10px 12px;margin:12px 0}
+.sumry.done{border-left-color:var(--done)}.sumry.failed{border-left-color:var(--fail)}.sumry.idle{border-left-color:var(--idle)}.sumry.killed{border-left-color:var(--stop)}
+.sumry p{margin:6px 0;white-space:pre-line}.sumry .k{display:block;margin-bottom:1px}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-s);padding:2px 0}
+.kv b{font-variant-numeric:tabular-nums}
+.kv.fc{flex-direction:column;align-items:flex-start;gap:0}
+.kv span.mono{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kv b.hot{color:var(--fail)}.kv b.warm{color:var(--idle)}.work{border-top:1px solid var(--panel2);margin-top:4px;padding-top:6px}
+.mixbar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--panel2);margin:4px 0}
+.mixbar i{display:block;height:100%}
+.f-opus{background:var(--m-opus)}.f-sonnet{background:var(--m-sonnet)}.f-haiku{background:var(--m-haiku)}.f-fable,.f-other{background:var(--m-other)}.f-default{background:var(--pend)}
+.badge.m-opus{color:var(--m-opus);background:var(--m-opus-bg);border-color:var(--m-opus);font-weight:700}
+.badge.m-sonnet{color:var(--m-sonnet);background:var(--m-sonnet-bg);border-color:var(--m-sonnet);font-weight:700}
+.badge.m-haiku{color:var(--m-haiku);background:var(--m-haiku-bg);border-color:var(--m-haiku);font-weight:700}
+.badge.m-fable,.badge.m-other{color:var(--m-other);background:var(--m-other-bg);font-weight:700}
+.badge.bare{border-style:dashed}
+.legend{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:var(--fs-xs);color:var(--muted)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+.lnk{cursor:pointer}.lnk:hover{background:var(--panel2)}
+.minibtn{border:0;background:none;color:var(--run);font-size:var(--fs-s);padding:4px 0}
+#plan .task{display:flex;gap:8px;align-items:flex-start;padding:3px 0;font-size:var(--fs-m);border-radius:6px}
+#plan .task:hover{background:var(--panel2)}#plan .task.sel{background:var(--run-bg)}
+#plan .task .box{flex:none;width:16px;height:16px;border-radius:50%;border:2px solid var(--line);margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1}
+#plan .task.completed{color:var(--muted);text-decoration:line-through}#plan .task.completed .box{background:var(--done);border-color:var(--done);color:var(--bg)}
+#plan .task.in_progress{font-weight:600}#plan .task.in_progress .box{border-color:var(--run);background:var(--run-bg)}
+#plan .task span:nth-child(2){flex:1;overflow-wrap:anywhere}#plan .task .badge{flex:none;white-space:nowrap}
+#plan .taskagent{display:flex;gap:6px;align-items:center;font-size:var(--fs-s);padding:1px 4px 1px 24px;border-radius:4px;min-width:0}
+#plan .taskagent .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px;grid-column:1/-1}
+#scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:20}
+#drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--panel);z-index:21;border-left:1px solid var(--line);
+  transform:translateX(102%);visibility:hidden;transition:transform .18s,visibility 0s .18s;overflow:auto;overscroll-behavior:contain;padding:14px 16px 40px;box-shadow:-8px 0 24px rgba(0,0,0,.18)}
+body.open #scrim{display:block}body.open #drawer{transform:none;visibility:visible;transition:transform .18s}
+#drawer>.row:first-child{position:sticky;top:-14px;margin:-14px -16px 4px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);z-index:1;flex-wrap:nowrap}
+#drawer .dclose{margin-left:auto}
+#drawer h2{margin:0;font-size:var(--fs-xl);overflow-wrap:anywhere}
+#drawer h4{margin:16px 0 6px}
+#drawer p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#drawer ul{margin:4px 0;padding-left:18px}#drawer li{margin:2px 0;overflow-wrap:anywhere}
+.block{background:var(--panel2);border-radius:8px;padding:8px 10px;margin:6px 0}
+.block .arow{flex-wrap:nowrap;align-items:flex-start}
+.block .arow>b{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
+.block .arow>.dot{margin-top:6px}
+.block .arow>.badge{flex:none;margin-top:1px}
+.block .arow>.muted{flex:0 1 auto;max-width:40%;overflow-wrap:anywhere}
+.cmd{display:block;background:var(--panel2);border-radius:6px;padding:6px 8px;overflow-wrap:anywhere;user-select:all;margin-top:4px}
+@media (max-width:1049px){main>aside{display:contents}.panel{order:1}#needPanel{order:-1}#needPanel.quiet{order:1}main>section{order:0}main>aside.custom>#needPanel{order:1}}
+/* side column layout: panel headings with move, fold and height controls, the height handle, the column divider */
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+@media (max-width:1049px){#colDiv{display:none}}
+#colDiv::before{content:"";width:2px;height:100%;border-radius:1px;background:transparent}
+#colDiv::after{content:"";position:absolute;top:50%;left:50%;width:4px;height:28px;margin:-14px 0 0 -2px;border-radius:3px;background:var(--muted)}
+#colDiv:hover::before,#colDiv.on::before,#colDiv:focus-visible::before{background:var(--run)}
+#colDiv:hover::after,#colDiv.on::after,#colDiv:focus-visible::after{opacity:1;background:var(--run)}
+#colDiv:focus-visible{outline:2px solid var(--run);outline-offset:-2px}
+.panel{position:relative;flex-shrink:0;display:flex;flex-direction:column}
+.panel>.ph{display:flex;align-items:center;gap:2px;margin:-4px -6px 6px -6px;min-height:26px}
+.panel>.ph h2{flex:1;min-width:0;margin:0;padding:0 2px}
+.panel>.pbody{min-height:0}
+.panel.sized>.pbody{flex:1 1 auto;overflow:auto;overscroll-behavior:contain;padding:0 2px 0 0}
+.panel.sized .events,.panel.sized #wts{max-height:none;overflow:visible}
+.panel.folded>.pbody,.panel.folded>.rsz{display:none}
+.panel.folded>.ph{margin-bottom:-4px}
+.pbtn{flex:none;border:0;background:none;color:var(--muted);border-radius:6px;padding:0;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center}
+.pbtn:hover{background:var(--panel2);color:var(--text)}
+.pbtn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.pbtn.grip{cursor:grab;touch-action:none}
+.pbtn.grip svg{fill:currentColor;stroke:none}
+.pbtn[aria-disabled="true"]{opacity:.4;cursor:default}
+.pbtn[aria-disabled="true"]:hover{background:none;color:var(--muted)}
+.pbtn.fold svg{transition:transform .12s}
+.panel.folded .pbtn.fold svg{transform:rotate(-90deg)}
+.pbtn[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){.pbtn.fold svg{transition:none}}
+@media (hover:hover) and (pointer:fine) and (min-width:701px){
+  .pbtn.pmv{opacity:0;transition:opacity .12s}
+  .panel:hover .pbtn.pmv,.panel:focus-within .pbtn.pmv{opacity:1}
+  .panel:hover .pbtn.pmv[aria-disabled="true"],.panel:focus-within .pbtn.pmv[aria-disabled="true"]{opacity:.4}
+}
+.rsz{position:absolute;left:12px;right:12px;bottom:-7px;height:14px;cursor:ns-resize;touch-action:none;z-index:2;display:flex;align-items:center;justify-content:center;border-radius:6px}
+.rsz::before{content:"";width:24px;height:3px;border-radius:2px;background:var(--muted)}
+.rsz:hover::before,.rsz.on::before,.rsz:focus-visible::before{opacity:1;background:var(--run);width:48px}
+.rsz:focus-visible{outline:2px solid var(--run);outline-offset:0}
+@media (pointer:coarse){.rsz{height:22px;bottom:-11px}}
+.panel.lifted{opacity:.55;outline:2px dashed var(--run);outline-offset:-2px}
+body.pdrag,body.pdrag *{cursor:grabbing!important;user-select:none}
+body.prsz,body.prsz *{cursor:ns-resize!important;user-select:none}
+body.pcol,body.pcol *{cursor:col-resize!important;user-select:none}
+#dropLine{position:fixed;left:0;top:0;height:3px;border-radius:2px;background:var(--run);box-shadow:0 0 0 2px var(--panel);z-index:30;pointer-events:none;display:none}
+#dropLine span{position:absolute;left:10px;top:-9px;font-size:var(--fs-xs);font-weight:700;line-height:15px;background:var(--run);color:var(--on-solid);padding:3px 9px;border-radius:999px;white-space:nowrap;box-shadow:var(--shadow)}
+@media (max-width:700px){
+  .rsz{display:none}
+  .panel>.ph{margin:-6px -8px 4px -8px}
+}
+@media (max-width:600px){
+  #treeView{height:62vh;min-height:360px}
+  header{padding:6px 16px;gap:5px 12px;position:static}
+  .hid{flex:1 1 100%}
+  .stats{gap:4px}.stat{padding:1px 7px;font-size:var(--fs-xs)}.stat b{font-size:var(--fs-s)}
+  .stat.zero{display:none}
+  .bars{flex:1 1 100%;gap:2px 14px}.bar{flex:1 1 0;min-width:0}
+  .bar .lbl{flex-wrap:wrap}.bar .lbl .rs{margin-left:0;flex-basis:100%;order:3}
+  .bars .sub{text-align:left;order:3;flex-basis:100%}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="hid"><h1>Agent control room</h1><div class="sub" id="meta">loading…</div></div>
+  <div class="stats" id="stats"></div>
+  <div class="bars" id="bars"></div>
+</header>
+<div id="banners"></div>
+<main>
+  <section>
+    <div class="toolrow">
+      <div class="filters" id="filters"></div>
+      <div class="tools"><select id="projSel" class="projsel" hidden aria-label="Switch project" title="Other projects with a running dashboard"></select><button class="iconbtn" id="layoutReset" title="Put the side panels back in their default order, heights, folds and column width">Reset layout</button><button class="iconbtn" id="themeBtn" title="Switch theme">Theme: auto</button></div>
+    </div>
+    <div id="treeView" class="wait">
+      <div class="tv-empty">Waiting for the first snapshot…</div>
+      <div class="tv-tools"><button class="iconbtn" id="tvIn" title="Zoom in" aria-label="Zoom in">+</button><button class="iconbtn" id="tvOut" title="Zoom out" aria-label="Zoom out">−</button><button class="iconbtn" id="tvFit" title="Zoom out to see the whole tree">Fit</button><button class="iconbtn" id="tvClear" hidden>Clear highlight</button></div>
+      <div class="tv-hint" id="tvHint">Lead → task steps → the runs working on each step (matched by name) → stages → agents. Runs no step names sit under "Other work". ± folds only what is under that box · drag to move · scroll to zoom · click a box for details</div>
+      <svg id="treeSvg" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Agent tree. Tab to a box, Enter opens it, plus and minus fold it."><g id="vp"><g id="tvLinks" aria-hidden="true"></g><g id="tvNodes"></g></g></svg>
+    </div>
+  </section>
+  <div id="colDiv" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Side column width" title="Drag to make the side column wider or narrower · arrow keys · double-click for the default width"></div>
+  <aside id="sideCol">
+    <div class="panel" id="needPanel" hidden><h2>Needs you</h2><div id="need"></div></div>
+    <div class="panel" id="planPanel" hidden><h2>Task list</h2><div id="plan"></div></div>
+    <div class="panel" id="burnPanel"><h2>Burn rate</h2><div id="burn"></div></div>
+    <div class="panel" id="readyPanel" hidden><h2>Ready to merge</h2><div id="ready"></div></div>
+    <div class="panel" id="trainPanel"><h2>Merge train</h2><div id="trains"></div></div>
+    <div class="panel" id="sidePanel" hidden><h2>Side agents</h2><div id="side"></div></div>
+    <div class="panel" id="mixPanel"><h2>Model mix</h2><div id="mix"></div></div>
+    <div class="panel" id="wtsPanel"><h2>Worktrees</h2><div id="wts"></div></div>
+    <div class="panel" id="eventsPanel"><h2>Recent events</h2><div class="events" id="events"></div></div>
+  </aside>
+</main>
+<div id="dropLine" aria-hidden="true"><span></span></div>
+<div id="layMsg" class="sr" role="status" aria-live="polite"></div>
+<div id="scrim"></div>
+<aside id="drawer" role="dialog" aria-modal="true" aria-label="Details"></aside>
+<script>
+"use strict";
+// Everything from status.json is untrusted text: it is only ever put on the page with textContent.
+var data = null, filter = "recent", openKey = null, theme = "auto", restoring = false;
+var RECENT_MS = { recent: 3 * 3600e3, day: 24 * 3600e3 };
+var $ = function (id) { return document.getElementById(id); };
+
+function h(tag, cls, text, kids) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined && text !== null && text !== "") e.textContent = String(text);
+  (kids || []).forEach(function (k) { if (k) e.appendChild(k); });
+  return e;
+}
+function clear(e) { while (e.firstChild) e.removeChild(e.firstChild); return e; }
+function ago(ms) {
+  if (!ms) return "";
+  var s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  if (s < 60) return s + "s ago";
+  if (s < 3600) return Math.round(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h " + Math.round((s % 3600) / 60) + "m ago";
+  return Math.floor(s / 86400) + "d ago";
+}
+function hhmm(ms) { var d = new Date(ms); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
+function tok(n) { return n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? Math.round(n / 1e3) + "k" : String(n || 0); }
+function resetText(v) {
+  if (!v) return "";
+  var t = Date.parse(v);
+  if (isNaN(t)) return "resets " + v;
+  var d = new Date(t), sameDay = d.toDateString() === new Date().toDateString();
+  var time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return "resets " + (sameDay ? "" : d.toLocaleDateString([], { weekday: "short" }) + " ") + time + " (" + dur(Math.max(0, t - Date.now())) + ")";
+}
+function dur(ms) {
+  var m = Math.round(ms / 60000);
+  return m < 1 ? "<1m" : m < 60 ? m + "m" : m < 2880 ? Math.floor(m / 60) + "h " + ("0" + (m % 60)).slice(-2) + "m" : Math.floor(m / 1440) + "d " + Math.floor((m % 1440) / 60) + "h";
+}
+function etaText(r) {
+  var e = r && r.eta;
+  if (!e || !live(r.state) || !e.known) return "";
+  if (e.overdue) return "past its usual time";
+  return "ETA ~" + dur(e.remainingMs);
+}
+// the ETA line of a tree box: a live run with no estimate says so instead of showing nothing
+function boxEta(r) { return etaText(r) || (r && live(r.state) ? "no ETA yet (first run of this kind)" : ""); }
+function famOf(m) {
+  m = (m || "").toLowerCase();
+  var f = ["opus", "sonnet", "haiku", "fable"].filter(function (x) { return m.indexOf(x) >= 0; })[0];
+  return f || (m ? "other" : "default");
+}
+function modelName(m) {
+  var t = String(m || "").toLowerCase().replace("claude-", "").replace(/\[.*\]$/, "");
+  var f = famOf(t);
+  if (f === "default") return "default";
+  if (f === "other") return t;
+  var v = /(\d+)(?:[-.](\d+))?/.exec(t.slice(t.indexOf(f) + f.length));
+  return f.charAt(0).toUpperCase() + f.slice(1) + (v ? " " + v[1] + (v[2] !== undefined ? "." + v[2] : "") : "");
+}
+// a model id that names only the family (no version number): shown with a dashed outline
+function bareModel(m) { var f = famOf(m); return (f === "opus" || f === "sonnet" || f === "haiku" || f === "fable") && modelName(m).indexOf(" ") < 0; }
+function modelBadge(m) {
+  var b = h("span", "badge m-" + famOf(m) + (bareModel(m) ? " bare" : ""), modelName(m));
+  b.title = bareModel(m) ? "The record names only the model family, not a version" : String(m || "");
+  return b;
+}
+function pill(state) { return h("span", "pill " + state, state); }
+// makes a row work like a button: focusable, Enter or Space runs it, and a key that survives redraws
+function clickable(el, fn, key, label) {
+  el.tabIndex = 0; el.setAttribute("role", "button");
+  if (key) el.dataset.key = key;
+  if (label) el.setAttribute("aria-label", label);
+  el.addEventListener("click", fn);
+  el.addEventListener("keydown", function (e) { if (e.target === el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); fn(e); } });
+  return el;
+}
+
+/* ---------- data shaping ---------- */
+function lanesOf(runs) {
+  var map = {}, order = [];
+  runs.forEach(function (r) {
+    if (r.isTrain) return;
+    var k = r.session + "|" + r.lane;
+    if (!map[k]) { map[k] = { key: k, title: r.title, lane: r.lane, runs: [] }; order.push(k); }
+    map[k].runs.push(r);
+  });
+  return order.map(function (k) {
+    var l = map[k];
+    l.runs.sort(function (a, b) { return b.start - a.start; });
+    l.latest = l.runs[0];
+    l.state = l.latest.state;
+    l.title = l.latest.title;
+    l.branch = l.latest.branch;
+    l.worktree = l.latest.worktree;
+    l.touched = Math.max.apply(null, l.runs.map(function (r) { return Math.max(r.end || 0, r.activity || 0, r.start || 0); }));
+    return l;
+  });
+}
+function live(s) { return s === "running" || s === "idle"; }
+function visible(l) {
+  if (filter === "all") return true;
+  if (filter === "live") return live(l.state);
+  if (filter === "attention") return l.state === "failed" || l.state === "killed" || l.state === "idle";
+  return live(l.state) || Date.now() - l.touched < RECENT_MS[filter];
+}
+function gitFor(l) {
+  if (!data.git) return null;
+  var b = data.git.branches || {}, n = l.branch || l.lane;
+  var tree = (data.git.worktrees || []).filter(function (w) { return (n && w.branch === n) || (l.worktree && w.name === l.worktree); })[0];
+  return { b: b[n], tree: tree };
+}
+
+/* ---------- header ---------- */
+function effWindow(w) {
+  var o = Object.assign({}, w), t = Date.parse(w.resets), l = String(w.label || "").toLowerCase();
+  var period = /5-hour|5 hour|five|session/.test(l) ? 5 * 3600e3 : /weekly/.test(l) ? 7 * 86400e3 : 0;
+  if (t && period && Date.now() >= t) {
+    while (t <= Date.now()) t += period;
+    o.resets = new Date(t).toISOString(); o.percent = 0; o.resetSince = true;
+  }
+  return o;
+}
+function drawHeader() {
+  var runs = data.runs || [], c = { running: 0, idle: 0, done: 0, failed: 0, killed: 0 };
+  lanesOf(runs).forEach(function (l) { c[l.state] = (c[l.state] || 0) + 1; });
+  var trainsLive = runs.filter(function (r) { return r.isTrain && live(r.state); }).length;
+  var age = Math.round((Date.now() - data.generated) / 1000);
+  setMeta();
+  var st = clear($("stats"));
+  [["running", "running", c.running + trainsLive], ["idle", "idle", c.idle], ["done", "done", c.done], ["failed", "failed", c.failed], ["killed", "stopped", c.killed]]
+    .forEach(function (x) { st.appendChild(h("span", "stat " + (x[2] ? x[0] : x[0] === "running" ? "" : "zero"), "", [h("b", "", x[2]), document.createTextNode(x[1])])); });
+  if (data.handoff) {
+    var hage = Date.now() - data.handoff.updated, stale = hage > 3 * 3600e3 && runs.some(function (r) { return live(r.state); });
+    var hs = h("span", "stat " + (stale ? "idle" : ""), "notes " + dur(hage) + " old");
+    hs.title = data.handoff.name + " was last changed " + ago(data.handoff.updated);
+    st.appendChild(hs);
+  }
+  var etas = runs.filter(function (r) { return live(r.state) && r.eta && r.eta.known; });
+  if (etas.length) {
+    var left = Math.max.apply(null, etas.map(function (r) { return r.eta.remainingMs; }));
+    var st2 = h("span", "stat", "", [h("b", "", left > 0 ? "~" + dur(left) : "late"), document.createTextNode("all live done")]);
+    st2.title = "Estimate from how long finished agents of the same workflow and phase took (" + etas.length + " live runs with history)";
+    st.appendChild(st2);
+  }
+  if (data.studio) {
+    var over = data.studio.count !== null && data.studio.count >= data.studio.limit;
+    st.appendChild(h("span", "stat " + (over ? "failed" : ""), "", [h("b", "", data.studio.count === null ? "?" : data.studio.count + "/" + data.studio.limit), document.createTextNode(data.studio.label || "slots")]));
+  }
+  var bars = clear($("bars"));
+  var u = data.usage;
+  if (u && !u.error) {
+    (u.windows || []).map(effWindow).filter(function (b) { return b.percent !== null && b.percent !== undefined && (b.percent > 0 || /5|hour|all/i.test(b.label)); }).forEach(function (b) {
+      var cls = b.percent >= 85 ? " hot" : b.percent >= 75 ? " warn" : "";
+      var used = Math.round(b.percent) + "% used" + (b.resetSince ? " (reset)" : ""), rs = resetText(b.resets);
+      var src = b.at ? (b.resetSince ? "reset since the last reading (" + ago(b.at) + ")" : (b.from === "app" ? "from the app, " : "written by the lead ") + ago(b.at)) : "";
+      // one label line: name, percent used, reset time; the source and the percent left are in the tooltip
+      var bar = h("div", "bar" + cls, "", [
+        h("div", "lbl", "", [h("span", "", b.label), h("span", "pc", used), rs ? h("span", "rs", rs) : null]),
+        h("div", "track", "", [(function () { var f = h("div", "fill"); f.style.width = b.percent + "%"; return f; })()])]);
+      bar.title = b.label + ": " + Math.round(b.percent) + "% used, " + Math.round(100 - b.percent) + "% left" + (rs ? "\n" + rs : "") + (src ? "\n" + src : "");
+      bars.appendChild(bar);
+    });
+    // the app's log only matters when the lead's own reading is old too: with a fresh reading its silence is not news
+    var notes = [];
+    if (u.appSilent && u.updated && Date.now() - u.updated > 1800e3) notes.push("the app has not logged usage for " + dur(u.appSilent * 60000) + ", and the last reading is " + ago(u.updated).replace(" ago", " old"));
+    if (u.updated && Date.now() - u.updated > 3600e3) notes.push("usage numbers are " + ago(u.updated).replace(" ago", " old") + " (the app's usage log and the lead's file are both stale)");
+    if (notes.length) { var nt = h("div", "sub", notes.join(" · ")); nt.title = notes.join("\n"); bars.appendChild(nt); }
+  } else {
+    var nu = h("div", "sub", u && u.error ? u.error : "No usage numbers yet.");
+    if (!(u && u.error)) nu.title = "The lead writes them to dashboard-usage.json";
+    bars.appendChild(nu);
+  }
+  var bn = clear($("banners"));
+  if (!PHONE && age > 120) bn.appendChild(h("div", "banner", "Data is " + age + "s old: the collector may have stopped (run.py)."));
+  (data.problems || []).forEach(function (p) { bn.appendChild(h("div", "banner info", p)); });
+  if (data.git && !data.git.available) bn.appendChild(h("div", "banner info", "Not a git repository: branches and worktrees are hidden."));
+}
+
+/* ---------- lanes ---------- */
+function chipsOf(run) {
+  return h("div", "chips", "", run.phases.map(function (p) { return h("span", "chip " + p.state, p.title + (p.count > 1 ? " ×" + p.count : "")); }));
+}
+function gitLine(l) {
+  var g = gitFor(l); if (!g) return null;
+  var parts = [];
+  if (g.b) {
+    parts.push(g.b.tip);
+    if (g.b.ahead !== undefined) parts.push("↑" + g.b.ahead + " ↓" + g.b.behind + " vs " + data.git.integration);
+  }
+  if (g.b && g.b.ahead) {
+    if (g.b.unpushed) parts.push(g.b.unpushed + " not pushed");
+    else if (!g.b.upstream) parts.push("never pushed");
+  }
+  if (g.tree && g.tree.dirty !== null && g.tree.dirty !== undefined) parts.push(g.tree.dirty ? g.tree.dirty + " uncommitted" : "clean");
+  return parts.length ? h("div", "git mono", parts.join("  ·  ")) : null;
+}
+var prevSig = null, nextSig = {};
+var stepInfo = "";
+function countText(total, shownN) { return shownN + " of " + total + " lanes" + stepInfo; }
+function drawFilters(total, shownN) {
+  var f = clear($("filters"));
+  [["recent", "Live + last 3 h"], ["day", "Last 24 h"], ["live", "Live only"], ["attention", "Needs attention"], ["all", "All"]].forEach(function (x) {
+    var b = h("button", filter === x[0] ? "on" : "", x[1]);
+    b.setAttribute("aria-pressed", filter === x[0] ? "true" : "false"); b.dataset.key = "f:" + x[0];
+    b.addEventListener("click", function () { filter = x[0]; try { localStorage.setItem("dash-filter", filter); } catch (e) {} draw(); });
+    f.appendChild(b);
+  });
+  var cnt = h("span", "muted small", countText(total, shownN)); cnt.id = "laneCount"; cnt.dataset.total = total; cnt.dataset.shown = shownN;
+  f.appendChild(cnt);
+
+}
+function drawLanes() {
+  var lanes = lanesOf(data.runs || []);
+  drawFilters(lanes.length, lanes.filter(visible).length);
+}
+
+/* ---------- side panels ---------- */
+function trainRow(r) {
+  var tr = r.train || {};
+  var row = h("div", "train");
+  row.appendChild(h("div", "row", "", [pill(r.state), h("b", "", trainName(r)), h("span", "muted small", live(r.state) ? "active " + ago(r.activity) : ago(r.end || r.activity)),
+    etaText(r) ? h("span", "badge eta", etaText(r)) : null]));
+  row.appendChild(chipsOf(r));
+  if (tr.branches && tr.branches.length) {
+    row.appendChild(h("div", "chips", "", tr.branches.map(function (b) { return h("span", "chip " + (tr.merged ? "done" : "pending"), (tr.merged ? "merged " : "queued ") + b); })));
+  }
+  row.appendChild(h("div", "row small", "", [h("span", "muted", "gate"), checkPill(r, tr.gate), h("span", "muted", "smoke"), checkPill(r, tr.smoke),
+    tr.tip ? h("span", "mono muted", tr.tip.slice(0, 8)) : null, tr.conflicts ? h("span", "muted", tr.conflicts + " conflicts resolved") : null]));
+  clickable(row, function () { openDrawer("run:" + r.id); }, "train:" + r.id, trainName(r) + ", " + r.state);
+  return row;
+}
+function trainName(r) { var tr = (r && r.train) || {}; return "Train " + (tr.k || (r.start ? "run " + hhmm(r.start) : String(r.id || "").slice(0, 6))); }
+// a finished train with no gate or smoke result never ran that check: "n/a", not "pending"
+function checkText(r, v) { return v && !(v === "pending" && !live(r.state)) ? v : live(r.state) ? "pending" : "n/a"; }
+function checkPill(r, v) { var t = checkText(r, v); return h("span", "pill " + (t === "n/a" ? "na" : t), t); }
+var GENERIC = { finish: 1, build: 1, fix: 1, merge: 1, server: 1, lane: 1, work: 1, with: 1, task: 1 };
+function wordSet(text) {
+  var t = {};
+  (String(text).toLowerCase().match(/[a-z0-9]+/g) || []).forEach(function (x) { t[x] = 1; });
+  return t;
+}
+// Does a task-list step talk about this run? Matches the train number, the lane name (every part of it) or the agents' labels.
+function matchRun(r, tokens) {
+  if (r.isTrain) return !!(r.train && tokens.train && r.train.k && tokens[String(r.train.k)]);
+  var parts = (r.lane || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  var ok = parts.length > 1 ? parts.every(function (p) { return tokens[p]; }) : (parts.length === 1 && parts[0].length >= 5 && !!tokens[parts[0]]);
+  if (ok) return true;
+  return r.agents.some(function (a) {
+    var w = ((a.label || "").toLowerCase().match(/[a-z0-9]+/g) || []).filter(function (x) { return x.length >= 4 && !GENERIC[x]; });
+    return w.length > 0 && w.every(function (x) { return tokens[x]; });
+  });
+}
+function stepRuns(text) {
+  var tokens = wordSet(text);
+  return (data.runs || []).filter(function (r) { return live(r.state) && matchRun(r, tokens); });
+}
+function stepEta(hits, noCount) {
+  if (!hits.length) return "";
+  var known = hits.filter(function (r) { return r.eta && r.eta.known; });
+  var late = known.some(function (r) { return r.eta.overdue; });
+  var left = known.length ? Math.max.apply(null, known.map(function (r) { return r.eta.remainingMs; })) : 0;
+  return (known.length ? (late && !left ? "past usual" : "ETA ~" + dur(left)) : "running") + (hits.length > 1 && !noCount ? " \u00b7 " + hits.length + " live" : "");
+}
+function taskFor(r) {
+  var items = (data.plan && data.plan.items) || [], tokens;
+  var hit = items.filter(function (i) { return matchRun(r, wordSet(i.content)); });
+  hit.sort(function (x, y) { return (x.status === "completed") - (y.status === "completed"); });
+  return hit[0] ? hit[0].content : "";
+}
+function drawPlan() {
+  focus.hover = "";
+  var p = data.plan, items = (p && p.items) || [], box = clear($("plan"));
+  $("planPanel").hidden = !items.length;
+  if (!items.length) return;
+  var done = items.filter(function (i) { return i.status === "completed"; }).length;
+  items.forEach(function (i) {
+    var hits = i.status === "completed" ? [] : stepRuns(i.content), eta = stepEta(hits);
+    var trow = h("div", "task " + i.status + (focus.step === i.content ? " sel" : ""), "", [h("span", "box", i.status === "completed" ? "✓" : ""), h("span", "", i.content),
+      eta ? h("span", "badge eta", eta) : null]);
+    trow.title = "Hover to highlight in the tree, click to pin and move there";
+    clickable(trow, function () { selectStep(i.content); }, "t:" + i.content, i.content + ", " + i.status.replace("_", " ") + (focus.step === i.content ? ", pinned" : ""));
+    trow.addEventListener("focus", function () { focus.hover = i.content; applyHighlight(); });
+    trow.addEventListener("blur", function () { focus.hover = ""; applyHighlight(); });
+    trow.addEventListener("mouseenter", function () { focus.hover = i.content; applyHighlight(); });
+    trow.addEventListener("mouseleave", function () { focus.hover = ""; applyHighlight(); });
+    if (trow.matches && trow.matches(":hover")) focus.hover = i.content;
+    box.appendChild(trow);
+    var ag = [];
+    hits.forEach(function (r) { r.agents.forEach(function (a) { if (a.state === "running" || a.state === "idle") ag.push({ r: r, a: a }); }); });
+    ag.slice(0, 6).forEach(function (x) {
+      var row = h("div", "taskagent lnk", "", [h("span", "dot " + x.a.state), h("span", "nm", (x.r.isTrain ? "train" : x.r.lane) + ": " + (x.a.label || x.a.id)), x.a.model ? modelBadge(x.a.model) : null,
+        h("span", "muted small", ago(x.a.activity))]);
+      clickable(row, function () { openDrawer(x.r.isTrain ? "run:" + x.r.id : x.r.session + "|" + x.r.lane); }, "ta:" + x.r.id + "|" + x.a.id);
+      box.appendChild(row);
+    });
+    if (ag.length > 6) box.appendChild(h("div", "taskagent muted small", "+" + (ag.length - 6) + " more agents"));
+  });
+  var when = p.updated ? " · updated " + ago(Date.parse(p.updated)) : "";
+  box.appendChild(h("div", "muted small", done + " of " + items.length + " done" + when));
+  var age = p.updated ? Date.now() - Date.parse(p.updated) : 0;
+  var stale = age > 30 * 60e3 && (data.runs || []).some(function (r) { return live(r.state); });
+  box.style.opacity = stale ? "0.6" : "";
+  if (stale) box.appendChild(h("div", "err", "Out of date: agents have been working since, but the lead has not updated this list."));
+  applyHighlight();
+}
+var needAll = false;
+function drawNeed() {
+  var all = data.attention || [], box = clear($("need"));
+  $("needPanel").hidden = !all.length;
+  if (!all.length) return;
+  var major = all.filter(function (n) { return n.sev !== "low"; });
+  // with nothing urgent the panel moves below the others instead of taking the top slot
+  $("needPanel").classList.toggle("quiet", !major.length);
+  var items = needAll ? all : major;
+  if (!items.length) box.appendChild(h("div", "muted small", "Nothing urgent."));
+  items.slice(0, 40).forEach(function (n) {
+    var row = h("div", "need", "", [h("span", "sev " + n.sev), h("span", "t", "", [n.lane ? h("b", "", n.lane) : null, document.createTextNode(n.text)])]);
+    if (n.key) clickable(row, function () { openDrawer(n.key); }, "n:" + n.key + "|" + n.text);
+    box.appendChild(row);
+  });
+  var minor = all.length - major.length;
+  if (minor) {
+    var btn = h("button", "minibtn", needAll ? "Hide " + minor + " minor" : "Show " + minor + " minor (old stopped runs, open issues, notes)");
+    btn.dataset.key = "needAll"; btn.setAttribute("aria-expanded", needAll ? "true" : "false");
+    btn.addEventListener("click", function () { needAll = !needAll; draw(); });
+    box.appendChild(btn);
+  }
+}
+function mixBar(counts, fmt) {
+  var order = ["opus", "sonnet", "haiku", "fable", "other", "default"], total = 0;
+  order.forEach(function (k) { total += counts[k] || 0; });
+  var wrap = h("div");
+  if (!total) { wrap.appendChild(h("div", "muted small", "none")); return wrap; }
+  var bar = h("div", "mixbar"), legend = h("div", "legend");
+  order.forEach(function (k) {
+    if (!counts[k]) return;
+    var seg = h("i", "f-" + k); seg.style.width = (counts[k] / total * 100) + "%"; bar.appendChild(seg);
+    var sw = h("i", "f-" + k);
+    legend.appendChild(h("span", "", "", [sw, document.createTextNode(k.charAt(0).toUpperCase() + k.slice(1) + ": " + (fmt ? fmt(counts[k]) : counts[k] + (counts[k] === 1 ? " agent" : " agents")))]));
+  });
+  wrap.appendChild(bar); wrap.appendChild(legend);
+  return wrap;
+}
+function drawMix() {
+  var box = clear($("mix")), liveC = {}, dayC = {}, now = Date.now();
+  (data.runs || []).forEach(function (r) {
+    r.agents.forEach(function (a) {
+      var f = famOf(a.model);
+      if (a.state === "running" || a.state === "idle") liveC[f] = (liveC[f] || 0) + 1;
+      if (now - a.activity < 24 * 3600e3) dayC[f] = (dayC[f] || 0) + 1;
+    });
+  });
+  (data.side || []).forEach(function (a) {
+    var f = famOf(a.model);
+    if (a.state !== "done") liveC[f] = (liveC[f] || 0) + 1;
+    if (now - a.activity < 24 * 3600e3) dayC[f] = (dayC[f] || 0) + 1;
+  });
+  box.appendChild(h("div", "subh", "Agents working now"));
+  box.appendChild(mixBar(liveC));
+  box.appendChild(h("div", "subh", "Agents in the last 24 h"));
+  box.appendChild(mixBar(dayC));
+  var fam = (data.burn && data.burn.byFamily5h) || {};
+  if (Object.keys(fam).length) { box.appendChild(h("div", "subh", "Tokens by model, last 5 h")); box.appendChild(mixBar(fam, tok)); }
+  if (liveC["default"] || dayC["default"] || fam["default"]) box.appendChild(h("div", "muted small", "\u201cDefault\u201d means the record names no model, so the run's default applies."));
+  if (box.firstChild) box.firstChild.style.marginTop = "0";
+}
+function kv(k, v, cls) { return h("div", "kv", "", [h("span", "", k), h("b", cls || "", v)]); }
+function forecastLine(label, fc) {
+  if (!fc || fc.mismatch) return null;
+  var text = fc.hitsBeforeReset ? "+" + fc.ratePerHour + "%/h: the limit is reached in " + dur(fc.to100Min * 60000) + ", before the reset" : "+" + fc.ratePerHour + "%/h: lasts until the reset";
+  return h("div", "kv fc", "", [h("span", "muted", label + " window"), h("b", fc.hitsBeforeReset ? "hot" : "", text)]);
+}
+function drawBurn() {
+  var b = data.burn, box = clear($("burn")), fc = (b && b.forecast) || {};
+  if (!b) { box.appendChild(h("div", "muted small", "No burn numbers yet.")); return; }
+  var f5 = forecastLine("5-hour", fc.fiveHour), fw = forecastLine("Weekly", fc.weekly);
+  if (f5) box.appendChild(f5);
+  if (fw) box.appendChild(fw);
+  if (!f5 && !fw) box.appendChild(h("div", "muted small", "Burn rate unknown: the usage log does not match this account. The limits are in the header."));
+  var working = b.liveAgents ? b.liveAgents + (b.liveAgents === 1 ? " agent" : " agents") + " running, " + tok(b.liveOutTokens) + " output so far" : "No agents running";
+  box.appendChild(h("div", "kv work", "", [h("span", "", "Now"), h("b", "", working)]));
+  if (b.finished1h || b.finished5h) box.appendChild(h("div", "muted small", "Finished: " + tok(b.finished1h) + " tokens in the last hour, " + tok(b.finished5h) + " in 5 hours."));
+  if (b.topLanes && b.topLanes.length) {
+    box.appendChild(h("div", "subh", "Most expensive lanes, last 24 h"));
+    b.topLanes.forEach(function (l) {
+      var nm = h("span", "mono", l.lane); nm.title = l.lane;
+      var r = h("div", "kv lnk", "", [nm, h("b", "", tok(l.tokens))]);
+      clickable(r, function () { openDrawer(l.key); }, "top:" + l.key, l.lane + ", " + tok(l.tokens) + " tokens");
+      box.appendChild(r);
+    });
+  }
+}
+function drawReady() {
+  var items = data.ready || [], box = clear($("ready"));
+  $("readyPanel").hidden = !items.length;
+  items.slice(0, 12).forEach(function (x) {
+    var row = h("div", "need lnk", "", [h("span", "sev " + (x.shipOk === false ? "high" : x.shipOk ? "ok" : "med")), h("span", "t", "", [h("b", "", x.lane),
+      document.createTextNode("\u2191" + x.ahead + (x.behind ? " \u2193" + x.behind : "") + " \u00b7 " + x.tip + " \u00b7 " + (x.train ? "in train " + x.train : "not in a train") + (x.pushed ? " \u00b7 pushed" : " \u00b7 not pushed") + (x.shipOk === false ? " \u00b7 final check failed" : x.shipOk ? " \u00b7 final check passed" : ""))])]);
+    clickable(row, function () { openDrawer(x.key); }, "r:" + x.key);
+    box.appendChild(row);
+  });
+  if (items.length > 12) box.appendChild(h("div", "muted small", "+" + (items.length - 12) + " more"));
+}
+function drawSide() {
+  var items = data.side || [], box = clear($("side"));
+  $("sidePanel").hidden = !items.length;
+  items.slice(0, 10).forEach(function (a) {
+    var row = h("div", "agent", "", [h("span", "dot " + (a.state === "done" ? "done" : a.state)), h("span", "nm", a.description || a.id)]);
+    if (a.model) row.appendChild(modelBadge(a.model));
+    row.appendChild(h("span", "muted small", a.state === "done" ? ago(a.activity) : a.state + " " + ago(a.activity)));
+    box.appendChild(row);
+  });
+  if (items.length > 10) box.appendChild(h("div", "muted small", "+" + (items.length - 10) + " older"));
+  box.appendChild(h("div", "muted small", "Subagents started directly by the lead, outside a workflow."));
+}
+function drawTrains() {
+  var t = clear($("trains")), trains = (data.runs || []).filter(function (r) { return r.isTrain; });
+  if (!trains.length) { var nt = h("div", "muted small", "No merge trains yet."); nt.title = "A merge train is a run whose workflow name contains “train”"; t.appendChild(nt); return; }
+  var shown = filter === "all" || filter === "day" ? trains.slice(0, 8) : trains.filter(function (r) { return live(r.state) || Date.now() - (r.end || r.activity) < RECENT_MS.recent; }).slice(0, 4);
+  if (!shown.length) shown = trains.slice(0, 1);
+  shown.forEach(function (r) { t.appendChild(trainRow(r)); });
+  if (trains.length > shown.length) t.appendChild(h("div", "muted small", trains.length - shown.length + " older trains hidden"));
+}
+function drawWorktrees() {
+  var box = clear($("wts")), g = data.git;
+  if (!g || !g.available) { box.appendChild(h("div", "muted small", "No git data.")); return; }
+  var named = g.worktrees.filter(function (w) { return w.branch; }), loose = g.worktrees.length - named.length;
+  var grid = h("div", "wt");
+  named.slice(0, 40).forEach(function (w) {
+    grid.appendChild(h("div", "mono", w.branch));
+    grid.appendChild(h("div", "mono muted", w.ahead === null || w.ahead === undefined ? "" : "↑" + w.ahead + " ↓" + w.behind));
+    grid.appendChild(h("div", "small " + (w.dirty ? "" : "muted"), w.dirty === null ? "?" : w.dirty ? w.dirty + " dirty" : "clean"));
+  });
+  box.appendChild(grid);
+  box.appendChild(h("div", "muted small", "compared with " + (g.integration || "(no integration branch)") + (loose ? " · +" + loose + " detached worktrees" : "")));
+}
+function drawEvents() {
+  var ev = [];
+  (data.runs || []).forEach(function (r) {
+    var tag = r.lane;
+    r.agents.forEach(function (a) {
+      if (a.started) ev.push({ t: a.started, s: tag + ": " + (a.label || a.id) + " started" });
+      if (a.state === "done" && a.activity) ev.push({ t: a.activity, s: tag + ": " + (a.label || a.id) + " finished" });
+      if (a.state === "failed") ev.push({ t: a.activity, s: tag + ": " + (a.label || a.id) + " failed" + (a.error ? " — " + a.error : "") });
+    });
+    if ((r.state === "killed" || r.state === "done" || r.state === "failed") && r.end) ev.push({ t: r.end, s: tag + ": run " + r.state });
+  });
+  ev.sort(function (a, b) { return b.t - a.t; });
+  var box = clear($("events"));
+  ev.slice(0, 60).forEach(function (e) { box.appendChild(h("div", "ev", "", [h("time", "", hhmm(e.t)), h("span", "", e.s)])); });
+  if (!ev.length) box.appendChild(h("div", "muted small", "Nothing yet."));
+}
+
+/* ---------- drawer ---------- */
+function section(title, kids) { var s = h("div"); s.appendChild(h("h4", "", title)); kids.forEach(function (k) { s.appendChild(k); }); return s; }
+function runBlock(r) {
+  var b = h("div", "block");
+  b.appendChild(h("div", "row", "", [pill(r.state), h("span", "mono", r.id), h("span", "muted small", r.name + (r.model ? " · " + modelName(r.model) : "") + " · started " + ago(r.start) + (r.tokens ? " · " + tok(r.tokens) + " tokens" : ""))]));
+  if (r.error) b.appendChild(h("div", "err", r.error));
+  r.agents.filter(function (a) { return a.state === "failed"; }).forEach(function (a) { b.appendChild(h("div", "err", (a.label || a.id) + " failed: " + (a.error || "no error text"))); });
+  var cmd = r.scriptPath ? 'Workflow({scriptPath: "' + r.scriptPath + '", resumeFromRunId: "' + r.id + '"})' : 'Workflow({resumeFromRunId: "' + r.id + '"})  // plus the same script or name';
+  b.appendChild(h("code", "cmd", cmd));
+  return b;
+}
+function resultBlocks(r) {
+  var out = [];
+  if (r.headline) out.push(h("p", "", r.headline));
+  (r.sections || []).forEach(function (s) {
+    var b = h("div", "block");
+    b.appendChild(h("div", "row", "", [h("b", "", s.name), typeof s.ok === "boolean" ? pill(s.ok ? "pass" : "fail") : null, s.tip ? h("span", "mono muted", "tip " + s.tip.slice(0, 10)) : null]));
+    if (s.plain && s.plain !== r.headline) b.appendChild(h("p", "small", s.plain));
+    if (s.commits.length) b.appendChild(h("ul", "small", "", s.commits.map(function (c) { return h("li", "mono", c); })));
+    if (s.issues.length) { b.appendChild(h("div", "small muted", "Open issues")); b.appendChild(h("ul", "small", "", s.issues.map(function (c) { return h("li", "", c); }))); }
+    if (s.tests) b.appendChild(h("div", "small muted", "Tests: " + s.tests));
+    out.push(b);
+  });
+  return out;
+}
+function findSubject(key) {
+  if (!key) return null;
+  if (key.indexOf("run:") === 0) {
+    var r = (data.runs || []).filter(function (x) { return x.id === key.slice(4); })[0];
+    return r ? { title: r.train ? trainName(r) : r.title, runs: [r], latest: r, state: r.state, branch: r.branch, lane: r.lane } : null;
+  }
+  return lanesOf(data.runs || []).filter(function (l) { return l.key === key; })[0] || null;
+}
+var TOOL_WORDS = { Bash: "running a command", Read: "reading a file", Edit: "editing a file", Write: "writing a file", MultiEdit: "editing files",
+  Grep: "searching the code", Glob: "looking for files", WebFetch: "reading a web page", WebSearch: "searching the web", Agent: "asking a helper agent",
+  ToolSearch: "loading a tool", TodoWrite: "updating its task list", StructuredOutput: "writing up its final report", Workflow: "starting a workflow" };
+function plainTool(now) {
+  if (!now) return "";
+  var name = now.split(":")[0], rest = now.slice(name.length + 1).trim();
+  var what = TOOL_WORDS[name] || (name.indexOf("mcp__") === 0 ? "using the " + name.split("__")[1].replace(/_/g, " ") + " tool" : "using " + name);
+  return what + (rest ? " (" + rest.slice(0, 100) + ")" : "");
+}
+function firstSentences(t, max) {
+  t = (t || "").replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  var cut = t.slice(0, max), i = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("; "));
+  return (i > 80 ? cut.slice(0, i + 1) : cut.replace(/\s+\S*$/, "")) + " \u2026";
+}
+function summaryOf(l) {
+  var r = l.latest, rows = [], st = r.state;
+  var chips = r.phases || [], cur = -1;
+  chips.forEach(function (c, i) { if (cur < 0 && (c.state === "running" || c.state === "idle")) cur = i; });
+  var liveAgents = r.agents.filter(function (a) { return a.state === "running" || a.state === "idle"; });
+  var g = r.isTrain ? null : gitFor(l);
+  if (r.isTrain && r.train) {
+    var tr = r.train;
+    rows.push(["What", "Combining " + (tr.branches.length || "some") + " finished branches (" + (tr.branches.join(", ") || "n/a") + ") into one build, then running the test gate and a smoke test."]);
+  } else {
+    rows.push(["Job", l.title]);
+  }
+  var status;
+  if (st === "running") {
+    status = "Running" + (cur >= 0 ? ": stage " + (cur + 1) + " of " + chips.length + " (" + chips[cur].title + ")" : "") + ", started " + ago(r.start) + ".";
+    if (r.eta && r.eta.known) status += r.eta.overdue ? " It is taking longer than usual." : " About " + dur(r.eta.remainingMs) + " left, going by similar past runs.";
+  } else if (st === "idle") {
+    status = "Quiet for a while: no activity " + ago(r.activity) + ". It may be stuck, waiting, or the chat that started it may have ended.";
+  } else if (st === "done") {
+    status = "Finished " + ago(r.end || r.activity) + (r.tokens ? ", using about " + tok(r.tokens) + " tokens" : "") + ".";
+  } else if (st === "failed") {
+    var bad = r.agents.filter(function (a) { return a.state === "failed"; })[0];
+    status = "Stopped by an error " + ago(r.end || r.activity) + (bad ? " (" + (bad.label || bad.id) + "): " + (bad.error || "no error text") : ".");
+  } else {
+    status = "Stopped before finishing, " + ago(r.end || r.activity) + ". It can be resumed with the command at the bottom.";
+  }
+  var task = taskFor(r);
+  if (task) rows.unshift(["Part of task", task]);
+  rows.push(["Status", status]);
+  if (liveAgents.length) {
+    liveAgents.slice(0, 4).forEach(function (a) {
+      var doing = a.said ? "\u201c" + a.said + "\u201d" : (plainTool(a.now) ? "is " + plainTool(a.now) + "." : "is working.");
+      rows.push([(a.label || a.id) + (a.model ? " \u00b7 " + modelName(a.model) : ""), doing]);
+    });
+  }
+  var ag = r.agents, totTools = ag.reduce(function (n, x) { return n + (x.tools || 0); }, 0), totCtx = ag.reduce(function (n, x) { return n + (x.tokens || 0); }, 0), totOut = ag.reduce(function (n, x) { return n + (x.outTokens || 0); }, 0);
+  if (ag.length && (totTools || totCtx)) rows.push(["Usage", ag.length + (ag.length > 1 ? " agents" : " agent") + ", " + totTools + " tool calls, " + (totOut ? tok(totOut) + " tokens out so far, " : "") + "context " + tok(totCtx) + " in total"]);
+  if (g && g.b) {
+    var bits = [];
+    if (g.b.ahead !== undefined) bits.push(g.b.ahead ? g.b.ahead + " ahead of " + data.git.integration + " (expected until the next release)" : "nothing beyond " + data.git.integration + " yet");
+    if (g.tree && g.tree.dirty) bits.push(g.tree.dirty + " files changed but not committed");
+    bits.push(!g.b.upstream ? "never pushed" : g.b.unpushed ? g.b.unpushed + " commits not pushed to " + g.b.upstream : "pushed (matches " + g.b.upstream + ")");
+    if (bits.length) rows.push(["Progress", bits.join("; ") + "."]);
+  }
+  if (st === "done" && r.headline) rows.push(["Result", firstSentences(r.headline, 380)]);
+  var issues = (r.sections || []).reduce(function (n, x) { return n + x.issues.length; }, 0);
+  if (st === "done" && issues) rows.push(["Open", issues + " open issues are listed below."]);
+  (data.attention || []).filter(function (n) { return n.key === l.key && n.sev !== "low"; }).slice(0, 3).forEach(function (n) { rows.push(["Needs you", n.text]); });
+  return { cls: st, rows: rows };
+}
+function summaryBlock(l) {
+  var sm = summaryOf(l), box = h("div", "sumry " + sm.cls);
+  sm.rows.forEach(function (x) { box.appendChild(h("p", "", "", [h("span", "k", x[0]), document.createTextNode(x[1])])); });
+  return box;
+}
+function waitText(ms) { return ms < 90000 ? Math.round(ms / 1000) + "s" : dur(ms); }
+function usageLine(a) {
+  var parts = [];
+  if (a.outTokens) parts.push(tok(a.outTokens) + " tokens out");
+  if (a.tools) parts.push(a.tools + " tool calls");
+  var ms = a.state === "running" || a.state === "idle" ? Date.now() - (a.started || a.activity || Date.now()) : a.duration;
+  if (ms > 0) parts.push(dur(ms));
+  var line = parts.join(", ");
+  if (a.tokens) line += (line ? ", " : "") + "context " + tok(a.tokens);
+  var typ = [];
+  if (a.typical) typ.push(dur(a.typical));
+  if (a.typicalTools) typ.push(a.typicalTools + " calls");
+  if (a.typicalTokens) typ.push("context " + tok(a.typicalTokens));
+  return line + (typ.length ? "; typical " + typ.join(", ") : "");
+}
+// the four usage numbers of an agent, with the typical value for its kind where there is one
+function usageRows(a) {
+  var live_ = a.state === "running" || a.state === "idle";
+  var ms = live_ ? Date.now() - (a.started || a.activity || Date.now()) : a.duration;
+  return [
+    { k: "Output tokens", now: a.outTokens || 0, typ: 0, f: tok },
+    { k: "Tool calls", now: a.tools || 0, typ: a.typicalTools || 0, f: function (v) { return String(v); } },
+    { k: "Running time", now: ms > 0 ? ms : 0, typ: a.typical || 0, f: dur },
+    { k: "Context size", now: a.tokens || 0, typ: a.typicalTokens || 0, f: tok }
+  ].map(function (r) {
+    r.nowText = r.now ? r.f(r.now) : "\u2014"; r.typText = r.typ ? r.f(r.typ) : "\u2014";
+    r.pct = r.typ && r.now ? Math.round(r.now / r.typ * 100) : null; r.over = r.pct !== null && r.pct > 100;
+    return r;
+  });
+}
+function usageTable(a) {
+  var g = h("div", "ut");
+  g.appendChild(h("div", "hd", ""));
+  g.appendChild(h("div", "hd r", "Now"));
+  g.appendChild(h("div", "hd r", "Typical for this kind of agent"));
+  usageRows(a).forEach(function (r) {
+    g.appendChild(h("div", "lb", r.k));
+    var now = h("div", "r", "", [h("div", "num" + (r.over ? " over" : ""), r.nowText)]);
+    if (r.pct !== null) {
+      var bar = h("div", "pc" + (r.over ? " over" : "")), fill = h("i"); fill.style.width = Math.min(100, r.pct) + "%"; bar.appendChild(fill);
+      now.appendChild(bar); now.appendChild(h("div", "pct" + (r.over ? " over" : ""), r.pct + "% of typical"));
+    }
+    g.appendChild(now);
+    g.appendChild(h("div", "r", "", [h("div", "num", r.typText)]));
+  });
+  return g;
+}
+// one compact row for the lane drawer's agent list: four numbers as columns (stacked label and value pairs on phones)
+function usageCols(a) {
+  var g = h("div", "ucols");
+  usageRows(a).forEach(function (r) {
+    var c = h("div", "c", "", [h("span", "k", r.k), h("span", "v" + (r.over ? " over" : ""), r.nowText)]);
+    c.appendChild(h("span", "t", r.typ ? "typical " + r.typText + (r.pct !== null ? " \u00b7 " + r.pct + "%" : "") : "\u00a0"));
+    g.appendChild(c);
+  });
+  return g;
+}
+function agentDrawer(key) {
+  var i = key.lastIndexOf("|"), lk = key.slice(6, i), id = key.slice(i + 1), l = findSubject(lk);
+  var a = l && l.latest.agents.filter(function (x) { return x.id === id; })[0];
+  if (!a) { document.body.classList.remove("open"); return; }
+  var d = clear($("drawer")), back = h("button", "iconbtn", "\u2039 Lane"), close = closeBtn();
+  back.dataset.key = "d:back";
+  back.addEventListener("click", function () { openDrawer(lk); });
+  d.appendChild(h("div", "row", "", [pill(a.state === "failed" ? "failed" : a.state), back, close]));
+  d.appendChild(h("h2", "", a.label || a.id));
+  d.appendChild(h("div", "row", "", [a.model ? modelBadge(a.model) : null, h("span", "muted small", (a.phase || "") + " \u00b7 " + (l.lane || l.title))]));
+  var box = h("div", "sumry spaced " + (a.state === "failed" ? "failed" : a.state === "idle" ? "idle" : a.state === "done" ? "done" : ""));
+  function row(k, v) { if (v) box.appendChild(h("p", "", "", [h("span", "k", k), document.createTextNode(v)])); }
+  var live_ = a.state === "running" || a.state === "idle";
+  row("Doing now", live_ ? (a.said ? "\u201c" + a.said + "\u201d" : (plainTool(a.now) ? "is " + plainTool(a.now) + "." : "")) : "");
+  box.appendChild(h("p", "", "", [h("span", "k", "Usage"), usageTable(a)]));
+  row("Started", a.started ? ago(a.started) : "");
+  row("Last activity", a.activity ? ago(a.activity) : "");
+  if (a.repeat >= 4) row("Warning", "It repeated the same call " + a.repeat + " times in its last 10.");
+  row("Error", a.error);
+  row("Last result", !live_ ? a.last : "");
+  d.appendChild(box);
+  if (a.helpers && a.helpers.length) d.appendChild(section("Helpers it started", a.helpers.map(function (x) { return h("div", "block", "", [h("b", "", x.desc), h("span", "muted small", x.done ? "  finished" : "  working")]); })));
+  document.body.classList.add("open");
+}
+function metaDrawer(kind) {
+  var d = clear($("drawer")), ld = data.lead || {}, adv = ld.advisor || {};
+  var close = closeBtn();
+  var box = h("div", "sumry " + (kind === "lead" ? (ld.state === "working" ? "running" : "idle") : "done"));
+  function row(k, v) { if (v) box.appendChild(h("p", "", "", [h("span", "k", k), document.createTextNode(v)])); }
+  if (kind === "advisor") {
+    var log = data.advisorLog || [], pend = adv.pending;
+    d.appendChild(h("div", "row", "", [pill(pend ? "running" : adv.calls || log.length ? "done" : "pending"), close]));
+    d.appendChild(h("h2", "", "Advisor"));
+    var block = function (cls, pairs) {
+      var b = h("div", "sumry " + cls);
+      pairs.forEach(function (x) { if (x[1]) b.appendChild(h("p", "", "", [h("span", "k", x[0]), typeof x[1] === "string" ? document.createTextNode(x[1]) : x[1]])); });
+      return b;
+    };
+    if (pend) d.appendChild(block("running", [["Thinking about", (ld.step || (log[0] && log[0].asked) || "the current decision")], ["Waiting", waitText(Date.now() - pend.since) + " so far"]]));
+    d.appendChild(block("done", [["Used", adv.calls ? adv.calls + (adv.calls > 1 ? " times" : " time") + " in this session, last " + ago(Date.parse(adv.last)) + "." : "Not consulted yet in this session."],
+      ["What it is", "A stronger reviewer model the lead consults before big decisions and before declaring work done. It reads the lead's whole conversation and answers with advice; it does not run tools or change files."]]));
+    if (!log.length) d.appendChild(block("idle", [["Consults", "No consults logged yet. The lead writes a note after each one."]]));
+    log.forEach(function (e) {
+      var head = h("span", "", "", [document.createTextNode(ago(e.at) + "  "), e.model ? modelBadge(e.model) : null]);
+      d.appendChild(block("done", [["When", head], ["Asked", e.asked], ["Advice", e.advice], ["Then", e.action]]));
+    });
+  } else {
+    d.appendChild(h("div", "row", "", [pill(ld.state === "working" ? "running" : "idle"), close]));
+    d.appendChild(h("div", "row", "", [h("h2", "", "Lead"), ld.model ? modelBadge(ld.model) : null]));
+    row("Status", ld.state === "working" ? "Working now, last activity " + ago(ld.activity) + "." : "Waiting for you or for background jobs; last activity " + ago(ld.activity) + ".");
+    row("Current task", ld.step);
+    row("Last said", ld.said ? "\u201c" + ld.said + "\u201d" : "");
+    row("Last action", ld.now ? plainTool(ld.now) : "");
+    var items = (data.plan && data.plan.items) || [];
+    if (items.length) row("Task list", items.map(function (i) { return (i.status === "completed" ? "\u2713 " : i.status === "in_progress" ? "\u25b6 " : "\u25cb ") + i.content; }).join("\n"));
+  }
+  if (kind !== "advisor") d.appendChild(box);
+  document.body.classList.add("open");
+}
+function drawDrawer() {
+  if (openKey === "advisor" || openKey === "lead") return metaDrawer(openKey);
+  if (openKey && openKey.indexOf("agent:") === 0) return agentDrawer(openKey);
+  var d = clear($("drawer")), l = findSubject(openKey);
+  if (!l) { document.body.classList.remove("open"); return; }
+  var r = l.latest;
+  var close = closeBtn();
+  d.appendChild(h("div", "row", "", [pill(l.state), close]));
+  d.appendChild(h("h2", "", l.title));
+  if (l.branch) d.appendChild(h("div", "mono muted", l.branch));
+  var gl = l.runs[0].isTrain ? null : gitLine(l); if (gl) d.appendChild(gl);
+  d.appendChild(summaryBlock(l));
+  d.appendChild(chipsOf(r));
+  if (live(r.state) && r.eta && r.eta.known) d.appendChild(h("div", "muted small", (r.eta.overdue ? "Past its usual time. " : "Estimated " + dur(r.eta.remainingMs) + " left. ") + "Based on " + r.eta.samples + " finished agents of the same phase."));
+  var res = resultBlocks(r);
+  d.appendChild(section("Full result", res.length ? res : [h("p", "muted", live(r.state) ? "Still running: no result yet." : "No result text recorded.")]));
+  if (r.train) {
+    var tr = r.train;
+    d.appendChild(section("Train", [h("p", "", "Branches: " + ((tr.branches || []).join(", ") || "n/a") + "\nTip: " + (tr.tip || "n/a") + "\nGate: " + checkText(r, tr.gate) + "   Smoke: " + checkText(r, tr.smoke) + (tr.gateNote ? "\n" + tr.gateNote : ""))]));
+  }
+  d.appendChild(section("Agents in the latest run", r.agents.map(function (a) {
+    var b = h("div", "block");
+    b.appendChild(h("div", "row arow", "", [h("span", "dot " + a.state), h("b", "", a.label || a.id), a.model ? modelBadge(a.model) : null, a.phase ? h("span", "muted small", a.phase) : null]));
+    b.appendChild(h("div", "muted small", a.state + (a.activity ? " \u00b7 last activity " + ago(a.activity) : "")));
+    b.appendChild(usageCols(a));
+    b.title = "Open this agent";
+    var ak = openKey;
+    clickable(b, function () { openDrawer("agent:" + ak + "|" + a.id); }, "da:" + a.id, "Open agent " + (a.label || a.id) + ", " + a.state);
+    if (a.last) b.appendChild(h("div", "mono muted", a.last));
+    if (a.error) b.appendChild(h("div", "err", a.error));
+    return b;
+  })));
+  if (r.logs && r.logs.length) d.appendChild(section("Run log", r.logs.map(function (x) { return h("p", "small mono", x); })));
+  d.appendChild(section("Runs (" + l.runs.length + ") and how to resume", l.runs.slice(0, 12).map(runBlock)));
+  document.body.classList.add("open");
+}
+function closeBtn() { var c = h("button", "iconbtn dclose", "Close"); c.dataset.key = "d:close"; c.addEventListener("click", closeDrawer); return c; }
+var drawerOpener = "";
+function focusKey(key) {
+  if (!key) return false;
+  var el = null;
+  try { el = document.querySelector('[data-key="' + (window.CSS && CSS.escape ? CSS.escape(String(key)) : String(key).replace(/["\\]/g, "")) + '"]'); } catch (e) {}
+  if (!el) return false;
+  restoring = true; try { el.focus({ preventScroll: true }); } finally { restoring = false; }
+  return document.activeElement === el;
+}
+function openDrawer(key) {
+  var dr = $("drawer"), wasOpen = document.body.classList.contains("open"), act = document.activeElement;
+  var inside = !!(act && dr.contains(act));
+  if (!wasOpen) drawerOpener = act && act.dataset ? act.dataset.key || "" : "";
+  openKey = key; drawDrawer();
+  if (wasOpen) dr.scrollTop = 0;
+  // move focus into the drawer when it opens, or when the element that had focus inside it was replaced
+  if (document.body.classList.contains("open") && (!wasOpen || inside)) focusKey("d:close");
+}
+function closeDrawer() {
+  var was = document.body.classList.contains("open");
+  openKey = null; document.body.classList.remove("open");
+  if (was && drawerOpener) focusKey(drawerOpener);
+  drawerOpener = "";
+}
+$("scrim").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") closeDrawer();
+  // keep Tab inside the open drawer
+  if (e.key === "Tab" && document.body.classList.contains("open")) {
+    var f = Array.prototype.filter.call($("drawer").querySelectorAll('button,[tabindex="0"],a[href]'), function (x) { return x.offsetParent !== null; });
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1], a = document.activeElement;
+    if (!$("drawer").contains(a)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && a === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
+  }
+});
+
+/* ---------- task -> tree focus ---------- */
+var focus = { step: "", hover: "", pending: false, unfold: false };
+function selectStep(text) {
+  if (focus.step === text) { clearFocus(); return; }
+  focus = { step: text, hover: "", pending: true, unfold: true };
+  var tokens = wordSet(text);
+  if (lanesOf(data.runs || []).some(function (l) { return matchRun(l.latest, tokens) && !visible(l); })) filter = "all";
+  draw();
+}
+function clearFocus() { focus = { step: "", hover: "", pending: false, unfold: false }; draw(); }
+// highlight the tree nodes that belong to the hovered (or pinned) task step, without rebuilding the tree
+function applyHighlight() {
+  var step = focus.hover || focus.step, any = false, gs = document.querySelectorAll("#tvNodes .tn");
+  gs.forEach(function (g) { if (step && g.__node.task === step) any = true; });
+  gs.forEach(function (g) {
+    var n = g.__node, on = !!step && n.task === step;
+    g.classList.toggle("focus", on);
+    g.classList.toggle("dim", !!step && any && !on && n.kind !== "lead");
+  });
+  $("tvClear").hidden = !focus.step;
+}
+var anim = null;
+function panTo(box) {
+  var el = $("treeSvg").getBoundingClientRect(), pad = 50;
+  var k = Math.max(0.35, Math.min(1.1, (el.width - pad * 2) / Math.max(1, box.w), (el.height - pad * 2) / Math.max(1, box.h)));
+  var target = { k: k, x: el.width / 2 - (box.x + box.w / 2) * k, y: el.height / 2 - (box.y + box.h / 2) * k };
+  userMoved = true;
+  if (anim) cancelAnimationFrame(anim);
+  var from = { x: vp.x, y: vp.y, k: vp.k }, t0 = performance.now(), D = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 1 : 420;
+  (function step(t) {
+    var u = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - u, 3);
+    vp.x = from.x + (target.x - from.x) * e; vp.y = from.y + (target.y - from.y) * e; vp.k = from.k + (target.k - from.k) * e; applyVp();
+    if (u < 1) anim = requestAnimationFrame(step);
+  })(t0);
+}
+
+/* ---------- tree view ---------- */
+var collapsedUser = {}, vp = { x: 24, y: 24, k: 1 }, needFit = true, dragging = false, treeDirty = false;
+var SVGNS = "http://www.w3.org/2000/svg";
+function sv(tag, attrs, text) {
+  var e = document.createElementNS(SVGNS, tag);
+  Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+  if (text !== undefined && text !== null) e.textContent = String(text);
+  return e;
+}
+// a cheap first cut by character count; fitText trims to the measured width once the node is on the page
+function cut(t, w, cw) { t = String(t || ""); var n = Math.max(4, Math.floor(w / (cw || 6.2))); return t.length > n ? t.slice(0, n - 1) + "…" : t; }
+var ellW = {};
+function fitText(t, max) {
+  var full = t.textContent, len;
+  try { len = t.getComputedTextLength(); } catch (e) { return; }
+  if (!len || len <= max) return;
+  var ck = t.getAttribute("class") || "badge";
+  if (!ellW[ck]) { t.textContent = "…"; ellW[ck] = t.getComputedTextLength() || 8; t.textContent = full; }
+  var room = max - ellW[ck], lo = 0, hi = full.length;
+  while (lo < hi) {
+    var mid = (lo + hi + 1) >> 1, w;
+    try { w = t.getSubStringLength(0, mid); } catch (e) { w = 1e9; }
+    if (w <= room) lo = mid; else hi = mid - 1;
+  }
+  t.textContent = full.slice(0, lo).replace(/\s+$/, "") + "…";
+}
+function fitNode(g) { g.querySelectorAll("text[data-fit]").forEach(function (t) { fitText(t, Number(t.getAttribute("data-fit"))); }); }
+function isFolded(n) {
+  // pinning a step from the task list opens the group it sits in
+  if (focus.unfold && focus.step && n.kind === "group" && n.memberTasks && n.memberTasks.indexOf(focus.step) >= 0) return false;
+  if (focus.unfold && focus.step && n.task === focus.step && (n.kind === "task" || (n.kind === "lane" && !(n.id in collapsedUser)))) return false;
+  return n.id in collapsedUser ? collapsedUser[n.id] : !!n.foldDefault;
+}
+function agentNode(a, key) {
+  var kids = (a.helpers || []).map(function (x) {
+    return { id: key + "|" + a.id + "|h" + x.desc, kind: "helper", w: 240, h: 36, label: x.desc, sub: x.done ? "helper · finished" : "helper · working", state: x.done ? "done" : "running", model: x.model, children: [] };
+  });
+  var loopy = a.repeat >= 4, sub = a.state === "failed" ? (a.error || "failed") : loopy ? "repeating the same call ×" + a.repeat : a.now ? plainTool(a.now) : (a.state === "done" ? "finished" : a.state);
+  // agents are listed under their stage (the stage is their heading), so a live lane needs one column less
+  return { id: key + "|" + a.id, kind: "agent", w: 270, h: 52, label: a.label || a.id, sub: sub, loop: loopy, state: a.state,
+    model: a.model, key: "agent:" + key + "|" + a.id, children: kids, foldDefault: false, below: true, indent: 14 };
+}
+function stageNodes(r, key) {
+  var out = [], seen = {};
+  (r.phases || []).forEach(function (ph) {
+    seen[ph.title] = 1;
+    var ags = r.agents.filter(function (a) { return a.phase === ph.title; });
+    if (!ags.length) return;
+    out.push({ id: key + "|st|" + ph.title, kind: "stage", w: 210, h: 34, label: ph.title, sub: ags.length ? ags.length + (ags.length > 1 ? " agents" : " agent") : "not started", state: ph.state,
+      key: key, children: ags.map(function (a) { return agentNode(a, key); }) });
+  });
+  var loose = r.agents.filter(function (a) { return !seen[a.phase]; });
+  if (loose.length) out.push({ id: key + "|st|other", kind: "stage", w: 210, h: 34, label: "Other", sub: loose.length + (loose.length > 1 ? " agents" : " agent"), state: "", key: key, children: loose.map(function (a) { return agentNode(a, key); }) });
+  return out;
+}
+function progOf(r) {
+  if (!live(r.state) || !r.eta || !r.eta.known) return null;
+  var spent = Date.now() - r.start;
+  return { frac: r.eta.overdue ? 1 : Math.min(0.97, spent / (spent + r.eta.remainingMs)), late: !!r.eta.overdue };
+}
+// the text rows of a lane box, top to bottom; the box is only as tall as its rows
+function sizeLane(n) {
+  var W = n.w - 34, rows = [], y = 50;
+  wrapLines(n.sub, W, 2, 6.8).forEach(function (ln) { rows.push({ cls: "m", y: y, t: ln }); y += 16; });
+  if (rows.length) y += 6;
+  // a sub line too long for one row breaks at its first " · " instead of being cut short
+  if (n.sub2) {
+    var cut2 = n.sub2.indexOf(" · "), parts2 = n.sub2.length * 6.4 > W && cut2 > 0 ? [n.sub2.slice(0, cut2), n.sub2.slice(cut2 + 3)] : [n.sub2];
+    parts2.forEach(function (t) { rows.push({ cls: "s", y: y, t: t }); y += 16; });
+  }
+  if (n.sub3) { rows.push({ cls: "g", y: y, t: n.sub3 }); y += 16; }
+  if (n.sub4) { rows.push({ cls: "s", y: y, t: n.sub4 }); y += 15; }
+  var last = rows.length ? rows[rows.length - 1].y : 28;
+  n.rows = rows; n.h = Math.max(64, last + (n.prog ? 20 : 14));
+  return n;
+}
+function sizeTask(n) { n.lines = wrapLines(n.label, n.w - 34, 2, 7.6); n.h = n.lines.length > 1 ? 84 : 68; return n; }
+function buildTree() {
+  var runs = data.runs || [], lead = data.lead;
+  var root = { id: "lead", kind: "lead", w: 310, h: 104, key: "lead", state: lead && lead.state === "working" ? "running" : "idle", children: [] };
+  root.label = "Lead" + (lead && lead.model ? ", " + modelName(lead.model) : "");
+  root.model = lead ? lead.model : "";
+  root.sub = lead ? (lead.state === "working" ? "working now" : "waiting for you or for jobs") + " · " + ago(lead.activity) : "session " + (data.session || "").slice(0, 8);
+  root.sub2 = lead && lead.step ? "Task: " + lead.step : (lead && lead.said ? lead.said : "");
+  var adv = lead && lead.advisor;
+  var alog = data.advisorLog || [], alast = alog[0], pend = adv && adv.pending;
+  // the advisor sits under the lead in the lead's own column, so that column is not empty below the lead
+  root.children.push({ id: "advisor", kind: "advisor", key: "advisor", below: true, w: 290, h: 92, label: "Advisor", model: alast ? alast.model : "",
+    state: pend ? "running" : (adv && adv.calls) || alog.length ? "done" : "pending",
+    sub: pend ? "Thinking · waiting " + waitText(Date.now() - pend.since) : alog.length ? alog.length + " logged · last " + ago(alog[0].at) : adv && adv.calls ? adv.calls + (adv.calls > 1 ? " consultations" : " consultation") + " · last " + ago(Date.parse(adv.last)) : "not consulted yet",
+    sub2: pend ? "about: " + ((lead && lead.step) || (alast && alast.asked) || "the current decision") : alast ? "Advice: " + alast.advice : (adv && adv.calls ? "No consults logged yet." : ""), children: [] });
+  var lanes = lanesOf(runs), order = { running: 0, idle: 1, failed: 2, killed: 3, done: 4 };
+  lanes.sort(function (a, b) { return (order[a.state] - order[b.state]) || (b.touched - a.touched); });
+  var units = [];
+  lanes.filter(visible).forEach(function (l) {
+    var r = l.latest, eta = boxEta(r), gl = gitLine(l);
+    var sig = l.state + "|" + r.agents.map(function (a) { return a.id + a.state; }).join(",") + "|" + r.phases.map(function (p) { return p.state; }).join(",");
+    units.push({ run: r, node: sizeLane({ id: l.key, kind: "lane", w: 330, label: l.lane, sub: l.title, sub2: (eta ? eta + " · " : "") + (live(l.state) ? "active " + ago(r.activity) : "finished " + ago(r.end || r.activity)),
+      sub3: gl ? gl.textContent : "", prog: progOf(r), sig: sig,
+      sub4: l.runs.length > 1 ? l.runs.length + " runs: " + Object.keys(l.runs.reduce(function (c, x) { c[x.state] = (c[x.state] || 0) + 1; return c; }, {})).map(function (k) { return l.runs.filter(function (x) { return x.state === k; }).length + " " + k; }).join(", ") : "",
+      state: l.state, key: l.key, foldDefault: !live(l.state), children: stageNodes(r, l.key) }) });
+  });
+  runs.filter(function (r) { return r.isTrain && (filter === "all" || filter === "day" || live(r.state) || Date.now() - (r.end || r.activity) < RECENT_MS.recent); }).slice(0, 6).forEach(function (r) {
+    var key = "run:" + r.id, eta = boxEta(r);
+    var tr = r.train || {};
+    units.push({ run: r, node: sizeLane({ id: key, kind: "lane", w: 330, label: trainName(r), sub: (tr.branches ? tr.branches.join(", ") : r.title), sub2: (eta ? eta + " · " : "") + (live(r.state) ? "active " + ago(r.activity) : "finished " + ago(r.end || r.activity)),
+      sub3: "gate " + checkText(r, tr.gate) + " · smoke " + checkText(r, tr.smoke) + (tr.tip ? " · " + tr.tip.slice(0, 8) : ""), prog: progOf(r),
+      sig: r.state + "|" + r.agents.map(function (a) { return a.id + a.state; }).join(","),
+      state: r.state, key: key, foldDefault: !live(r.state), children: stageNodes(r, key) }) });
+  });
+  var items = (data.plan && data.plan.items) || [];
+  function tag(n, t) { n.task = t; n.children.forEach(function (c) { tag(c, t); }); }
+  if (items.length) {
+    var groups = items.map(function (i) { return { item: i, tokens: wordSet(i.content), units: [] }; }), other = [];
+    units.forEach(function (u) {
+      var g = groups.filter(function (x) { return matchRun(u.run, x.tokens); })[0];
+      (g ? g.units : other).push(u);
+    });
+    // the tabs filter the lead's steps too: Live only keeps what is in progress or has a live lane; Needs attention keeps open decisions and steps that need a person, or have a failed, stopped or idle lane
+    function keepStep(g) {
+      var isOpen = g.item.status !== "completed";
+      if (filter === "live") return g.item.status === "in_progress" || g.units.some(function (u) { return live(u.run.state); });
+      if (filter === "attention") return g.units.some(function (u) { return u.run.state === "failed" || u.run.state === "killed" || u.run.state === "idle"; }) || (isOpen && /^(decision|needs a person|needs you)/i.test(g.item.content));
+      return true;
+    }
+    var stepsShown = groups.filter(keepStep).length;
+    stepInfo = " · " + stepsShown + " of " + groups.length + " steps";
+    var cntEl = $("laneCount"); if (cntEl) cntEl.textContent = countText(cntEl.dataset.total, cntEl.dataset.shown);
+    var stepNodes = [];
+    groups.forEach(function (g, idx) {
+      if (!keepStep(g)) return;
+      var liveN = g.units.filter(function (u) { return live(u.run.state); }), eta = stepEta(liveN.map(function (u) { return u.run; }), true);
+      var node = sizeTask({ id: "task|" + idx, kind: "task", w: 340, label: g.item.content,
+        state: g.item.status === "in_progress" ? "running" : g.item.status === "completed" ? "done" : "pending",
+        sub: (g.units.length ? g.units.length + (g.units.length > 1 ? " lanes" : " lane") : "no lanes yet") + (liveN.length ? " · " + liveN.length + " live" : "") + (eta ? " · " + eta : ""),
+        foldDefault: g.item.status === "completed" && !liveN.length, children: g.units.map(function (u) { return u.node; }) });
+      // a finished step with no live lane folds to one slim line; unfolding it shows the full box and its lanes
+      tag(node, g.item.content);
+      if (g.item.status === "completed") { node.canSlim = true; if (isFolded(node)) { node.slim = true; node.h = SLIM_H; } }
+      stepNodes.push(node);
+    });
+    // two or more slim steps in a row fold further into one chip ("3 done: ..."); unfolding it lists them under it
+    for (var si = 0; si < stepNodes.length;) {
+      var sj = si;
+      // a finished step with no live run belongs to the group whether it is shown folded or open, so opening one keeps it under the chip
+      while (sj < stepNodes.length && stepNodes[sj].canSlim && stepNodes[sj].foldDefault) sj++;
+      if (sj - si >= 2) {
+        var run = stepNodes.slice(si, sj);
+        var chip = { id: "grp|" + run[0].label, kind: "group", w: 340, h: SLIM_H, state: "done", foldDefault: true, children: [], members: run.map(function (n) { return n.label; }), memberTasks: run.map(function (n) { return n.task; }) };
+        chip.label = run.length + " done: " + chip.members.join(" · ");
+        chip.sub = isFolded(chip) ? "folded: " + run.length + " finished steps" : run.length + " finished steps, listed below";
+        // the finished steps are the chip's children, listed under it, so folding the chip folds exactly those and nothing beside it
+        if (!isFolded(chip)) { run.forEach(function (n) { n.below = true; n.indent = 14; }); chip.children = run; }
+        root.children.push(chip);
+        si = sj;
+      } else { if (sj === si) { root.children.push(stepNodes[si]); si++; } else { for (; si < sj; si++) root.children.push(stepNodes[si]); } }
+    }
+    if (filter === "live") other = other.filter(function (u) { return live(u.run.state); });
+    if (filter === "attention") other = other.filter(function (u) { return u.run.state === "failed" || u.run.state === "killed" || u.run.state === "idle"; });
+    if (other.length) {
+      var on = sizeTask({ id: "task|other", kind: "task", w: 340, label: "Other work (runs no task step names)", state: other.some(function (u) { return live(u.run.state); }) ? "running" : "done",
+        sub: other.length + (other.length > 1 ? " lanes" : " lane"), foldDefault: false, children: other.map(function (u) { return u.node; }) });
+      tag(on, "__other"); root.children.push(on);
+    }
+  } else {
+    units.forEach(function (u) { root.children.push(u.node); });
+    stepInfo = "";
+    var cntEl0 = $("laneCount"); if (cntEl0) cntEl0.textContent = countText(cntEl0.dataset.total, cntEl0.dataset.shown);
+  }
+  var side = (data.side || []).filter(function (a) { return a.state !== "done" || Date.now() - a.activity < RECENT_MS.recent; });
+  if (side.length) root.children.push({ id: "side", kind: "stage", w: 230, h: 38, label: "Side agents", sub: side.length + " started by the lead directly", state: side.some(function (a) { return a.state === "running"; }) ? "running" : "done",
+    foldDefault: false, children: side.slice(0, 10).map(function (a) { return { id: "side|" + a.id, kind: "agent", w: 270, h: 52, below: true, indent: 14, label: a.description || a.id, sub: a.state, state: a.state === "done" ? "done" : a.state, model: a.model, children: [] }; }) });
+  return root;
+}
+var SLIM_H = 32, GAP_X = 40, GAP_Y = 10, CELL_GX = 18, CELL_GY = 10, TOGGLE_R = 12;
+function foldable(n) { return n.children.length > 0 || !!n.canSlim || n.kind === "group"; }
+// consecutive leaf siblings of the same kind and size share one grid segment; anything with visible children is its own segment
+function segmentsOf(kids) {
+  var out = [], cur = null;
+  kids.forEach(function (c) {
+    var key = c.vis.length ? "" : c.kind + (c.slim ? ":s" : "");
+    if (key && cur && cur.key === key) { cur.items.push(c); return; }
+    cur = { key: key, items: [c] }; out.push(cur);
+    if (!key) cur = null;
+  });
+  return out;
+}
+// The tree grows to the right, one column per depth. Runs of leaf siblings are packed row by row into a grid that may
+// reach as far right as `limit` (tree units), so a long list of folded lanes or pending steps does not make one tall column.
+function layoutTree(root, limit) {
+  var maxW = {}, all = [];
+  (function walk(n, d) {
+    n.depth = d; all.push(n); n.x = undefined; n.grid = false;
+    n.vis = (isFolded(n) ? [] : n.children);
+    n.vis.forEach(function (c) { walk(c, c.below ? d : d + 1); });
+    maxW[d] = Math.max(maxW[d] || 0, n.w + (n.below ? n.indent || 0 : 0));
+  })(root, 0);
+  var xs = {}, x = 0;
+  Object.keys(maxW).map(Number).sort(function (a, b) { return a - b; }).forEach(function (d) { xs[d] = x; x += maxW[d] + GAP_X; });
+  (function measure(n) {
+    var sum = 0, below = n.vis.filter(function (c) { return c.below; });
+    n.segs = segmentsOf(n.vis.filter(function (c) { return !c.below; }));
+    n.segs.forEach(function (s) {
+      var m = s.items.length, cw = Math.max.apply(null, s.items.map(function (c) { return c.w; })), d = n.depth + 1;
+      var cols = s.key && m > 1 && limit ? Math.max(1, Math.min(m, Math.floor((limit - xs[d] + CELL_GX) / (cw + CELL_GX)))) : 1;
+      if (cols > 1) {
+        s.cw = cw; s.rows = []; s.span = GAP_Y - CELL_GY;
+        for (var i = 0; i < m; i += cols) {
+          var row = s.items.slice(i, i + cols), rh = Math.max.apply(null, row.map(function (c) { return c.h; }));
+          s.rows.push({ items: row, h: rh }); s.span += rh + CELL_GY;
+        }
+        s.items.forEach(function (c) { c.segs = []; c.kids = 0; c.span = 0; c.grid = true; });
+      } else {
+        s.rows = null; s.span = 0;
+        s.items.forEach(function (c) { s.span += measure(c); });
+      }
+      sum += s.span;
+    });
+    var self = n.h + GAP_Y;
+    below.forEach(function (c) { self += measure(c); });
+    n.kids = sum; n.span = Math.max(sum, self); return n.span;
+  })(root);
+  (function place(n, top) {
+    var head = n.depth === 0 || n.kind === "task" || n.vis.some(function (c) { return c.below; });
+    n.y = head ? top : top + (n.span - n.h) / 2; n.x = xs[n.depth] + (n.below ? n.indent || 0 : 0);
+    var t = n.depth === 0 ? top : top + (n.span - n.kids) / 2, d = n.depth + 1;
+    n.segs.forEach(function (s) {
+      if (s.rows) {
+        var y = t;
+        s.rows.forEach(function (r) {
+          r.items.forEach(function (c, j) { c.x = xs[d] + j * (s.cw + CELL_GX); c.y = y; });
+          y += r.h + CELL_GY;
+        });
+        t += s.span;
+      } else s.items.forEach(function (c) { place(c, t); t += c.span; });
+    });
+    var by = n.y + n.h + GAP_Y;
+    n.vis.forEach(function (c) { if (c.below) { place(c, by); c.y = by; by += c.span; } });
+  })(root, 0);
+  var nodes = all.filter(function (n) { return n.x !== undefined; }), w = 0, ht = 0;
+  // the bounding box of what is drawn, including the fold buttons that stick out on the right
+  nodes.forEach(function (n) { w = Math.max(w, n.x + n.w + (foldable(n) ? TOGGLE_R : 0)); ht = Math.max(ht, n.y + n.h); });
+  return { nodes: nodes, width: w, height: ht };
+}
+// the grid width that shows the most of the tree, as large as possible, in the tree box (ties: the shape closest to the box's).
+// When even the smallest allowed scale cannot show it all, it is the width that shows the largest share of it at that scale.
+var gridLimit = null;
+function chooseLimit(root, minK) {
+  var el = $("treeSvg").getBoundingClientRect(), aw = Math.max(160, el.width - 2 * FIT_M), ah = Math.max(160, el.height - 2 * FIT_M);
+  var base = layoutTree(root, 0), cands = [0], best = null;
+  for (var i = 0; i <= 12; i++) cands.push(Math.round(base.width + i * 170));
+  cands.forEach(function (lim) {
+    var L = lim ? layoutTree(root, lim) : base, W = Math.max(1, L.width), H = Math.max(1, L.height);
+    var k = Math.max(minK, Math.min(aw / W, ah / H, 1)), seen = Math.min(1, aw / (W * k)) * Math.min(1, ah / (H * k)), score = k * k * seen;
+    // steps two across read as "these can happen now, side by side": prefer that over one long column when there are steps enough
+    var cols = {}, steps = 0;
+    L.nodes.forEach(function (n) { if (n.kind === "task" || n.kind === "group") { cols[Math.round(n.x)] = 1; steps++; } });
+    if (steps >= 4 && Object.keys(cols).length >= 2 && k >= Math.min(0.5, minK)) score *= 1.3;
+    var shape = Math.abs(Math.log((W / H) / (aw / ah)));
+    if (!best || score > best.score * 1.008 || (score >= best.score / 1.008 && shape < best.shape - 0.01)) best = { lim: lim, score: score, shape: shape };
+  });
+  return best.lim;
+}
+function minScale(all) { return all === true ? 0.2 : $("treeSvg").getBoundingClientRect().width < 600 ? 0.5 : 0.6; }
+function wrapLines(t, w, max, cw) {
+  var n = Math.max(8, Math.floor(w / (cw || 6.3))), words = String(t || "").split(/\s+/).filter(Boolean), lines = [], cur = "";
+  words.forEach(function (wd) {
+    if ((cur + " " + wd).trim().length > n) { if (cur) lines.push(cur); cur = wd.length > n ? wd.slice(0, n - 1) + "…" : wd; }
+    else cur = (cur + " " + wd).trim();
+  });
+  if (cur) lines.push(cur);
+  if (lines.length > max) { lines = lines.slice(0, max); lines[max - 1] = cut(lines[max - 1] + " …", w, cw); }
+  return lines;
+}
+function badgeEl(model, x, y, wd) {
+  var mb = sv("g", { "class": "mb m-" + famOf(model) + (bareModel(model) ? " bare" : ""), transform: "translate(" + x + "," + y + ")" });
+  mb.appendChild(sv("rect", { width: wd, height: 17, rx: 5 })); mb.appendChild(sv("text", { x: wd / 2, y: 12.5, "data-fit": wd - 8 }, modelName(model)));
+  return mb;
+}
+var KIND_WORD = { lead: "Lead", advisor: "Advisor", task: "Task step", lane: "Lane", stage: "Stage", agent: "Agent", helper: "Helper" };
+function nodeLabel(n) {
+  var s = (KIND_WORD[n.kind] || "") + ": " + n.label + (n.state ? ", " + n.state : "") + (n.model ? ", " + modelName(n.model) : "") + (n.sub ? ". " + n.sub : "");
+  if (n.kind === "group") s = n.members.length + " finished steps: " + n.members.join("; ") + (isFolded(n) ? ". Folded: press plus to list them" : ". Press minus to fold them");
+  else if (n.children.length) s += isFolded(n) ? ". Folded: press plus to show " + (n.slim ? "it in full and " : "") + "its " + n.children.length + " items" : ". Press minus to fold";
+  else if (n.canSlim) s += isFolded(n) ? ". Folded to one line: press plus to show it in full" : ". Press minus to fold it to one line";
+  return s;
+}
+function nodeEl(n) {
+  var g = sv("g", { "class": "tn " + n.kind + " " + (n.state || "") + (n.loop ? " loop" : "") + (n.slim ? " slim" : ""), transform: "translate(" + n.x + "," + n.y + ")",
+    tabindex: "0", role: "button", "data-key": "n:" + n.id, "aria-label": nodeLabel(n) });
+  if (foldable(n)) g.setAttribute("aria-expanded", isFolded(n) ? "false" : "true");
+  g.appendChild(sv("title", {}, n.label + (n.sub ? "\n" + n.sub : "") + (n.sub2 ? "\n" + n.sub2 : "")));
+  g.appendChild(sv("rect", { "class": "box", width: n.w, height: n.h, rx: 11 }));
+  g.appendChild(sv("rect", { "class": "stripe", x: 4, y: n.h < 40 ? 7 : 10, width: 5, height: n.h - (n.h < 40 ? 14 : 20), rx: 2.5 }));
+  var px = 20, W = n.w - px - 14;
+  function T(cls, x, y, txt, max, extra) {
+    var a = Object.assign({ "class": cls, x: x, y: y }, extra || {});
+    if (max) a["data-fit"] = Math.max(10, max);
+    var t = sv("text", a, max ? cut(txt, max, 4) : txt); g.appendChild(t); return t;
+  }
+  if (n.slim || n.kind === "group") {
+    // one line: the title cut to the measured width, and a small DONE mark
+    var mw = 42, mk = sv("g", { "class": "sp sm done", transform: "translate(" + (n.w - 12 - mw) + "," + (n.h / 2 - 8) + ")" });
+    mk.appendChild(sv("rect", { width: mw, height: 16, rx: 8 })); mk.appendChild(sv("text", { x: mw / 2, y: 11.5 }, "DONE"));
+    g.appendChild(mk);
+    // an expanded group is only a header for the steps listed under it, so it does not repeat their titles
+    T("t3", px, n.h / 2 + 4.5, n.kind === "group" && !isFolded(n) ? n.members.length + " finished steps, listed below" : n.label, W - mw - 6);
+  } else if (n.kind === "lead") {
+    T("t", px, 27, "LEAD");
+    if (n.model) g.appendChild(badgeEl(n.model, n.w - 92, 12, 78));
+    T("s st", px, 47, n.sub, W);
+    wrapLines(n.sub2, W, 2, 6.8).forEach(function (ln, i) { T("m", px, 68 + i * 16, ln, W); });
+  } else if (n.kind === "task") {
+    var word = n.state === "running" ? "IN PROGRESS" : n.state === "done" ? "DONE" : "PENDING", tpw = Math.round(word.length * 7.2 + 18);
+    (n.lines || wrapLines(n.label, W, 2, 7.6)).forEach(function (ln, i) { T("t2", px, 24 + i * 17, ln, W); });
+    var tp = sv("g", { "class": "sp " + n.state, transform: "translate(" + (n.w - 14 - tpw) + "," + (n.h - 30) + ")" });
+    tp.appendChild(sv("rect", { width: tpw, height: 20, rx: 10 })); tp.appendChild(sv("text", { x: tpw / 2, y: 14 }, word));
+    g.appendChild(tp);
+    T("s", px, n.h - 13, n.sub, W - tpw - 8);
+  } else if (n.kind === "lane") {
+    var pw = Math.round(String(n.state).length * 7.2 + 18);
+    T("t", px, 28, n.label, W - pw - 10);
+    var sp = sv("g", { "class": "sp " + n.state, transform: "translate(" + (n.w - 14 - pw) + ",12)" });
+    sp.appendChild(sv("rect", { width: pw, height: 20, rx: 10 })); sp.appendChild(sv("text", { x: pw / 2, y: 14 }, String(n.state).toUpperCase()));
+    g.appendChild(sp);
+    (n.rows || []).forEach(function (r) { T(r.cls, px, r.y, r.t, r.cls === "g" ? W + 6 : W); });
+    if (n.prog) {
+      g.appendChild(sv("rect", { x: px, y: n.h - 9, width: W, height: 4, rx: 2, fill: "var(--panel2)" }));
+      g.appendChild(sv("rect", { x: px, y: n.h - 9, width: Math.round(W * n.prog.frac), height: 4, rx: 2, fill: n.prog.late ? "var(--idle)" : "var(--run)" }));
+    }
+  } else if (n.kind === "stage") {
+    var cnt = String(n.children.length);
+    T("t2", px, n.h / 2 + 5, n.label, W - cnt.length * 8 - 14);
+    T("s", n.w - 14, n.h / 2 + 5, cnt, 0, { "text-anchor": "end" });
+  } else if (n.kind === "advisor") {
+    T("t", px, 26, "ADVISOR");
+    if (n.model) g.appendChild(badgeEl(n.model, n.w - 84, 10, 70));
+    T("s st", px, 46, n.sub, W);
+    wrapLines(n.sub2, W, 2, 6.8).forEach(function (ln, i) { T("m", px, 64 + i * 15, ln, W); });
+  } else if (n.kind === "helper") {
+    T("t3", px, 16, n.label, W - (n.model ? 66 : 4));
+    T("s", px, 29, n.sub, W);
+    if (n.model) g.appendChild(badgeEl(n.model, n.w - 72, 4, 60));
+  } else {
+    T("t2", px, 22, n.label, W - (n.model ? 80 : 4));
+    if (n.model) g.appendChild(badgeEl(n.model, n.w - 86, 8, 72));
+    T("s", px, 41, n.sub, W);
+  }
+  if (foldable(n)) {
+    var tg = sv("g", { "class": "tg", transform: "translate(" + (n.w + 1) + "," + (n.h / 2) + ")" });
+    tg.appendChild(sv("circle", { "class": "hit", r: n.h < 40 ? 16 : 28 })); tg.appendChild(sv("circle", { r: n.h < 40 ? 9 : 10 })); tg.appendChild(sv("text", { y: 4.5 }, isFolded(n) ? "+" : "−"));
+    g.appendChild(tg);
+  }
+  g.__node = n;
+  return g;
+}
+function drawTreeView() {
+  nextSig = {};
+  if (dragging) { treeDirty = true; return; }
+  var root = buildTree(), L = $("tvLinks"), N = $("tvNodes"), svg = $("treeSvg");
+  $("treeView").classList.remove("wait");
+  // the grid width is chosen again only on the first draw, Fit or a new box size, so neither a data refresh nor a fold reflows the other boxes
+  if (needFit || relayout || gridLimit === null) { gridLimit = chooseLimit(root, minScale(fitAll)); relayout = false; }
+  var lay = layoutTree(root, gridLimit);
+  clear(L); clear(N);
+  // elbow links: every child of one parent shares the same vertical trunk, so the lines merge instead of fanning out;
+  // a grid gets one link per row, into the row's first box
+  lay.nodes.forEach(function (n) {
+    n.vis.forEach(function (c) {
+      if (!c.below) return;
+      // a box listed under its parent: a trunk down the parent's left edge with a short stub into each box
+      var tx = c.x - n.x < 8 ? n.x + 26 : n.x + 7, ym = c.y + c.h / 2;
+      L.appendChild(sv("path", { "class": "lk", d: c.x - n.x < 8 ? "M" + tx + "," + (n.y + n.h) + " V" + c.y : "M" + tx + "," + (n.y + n.h) + " V" + (ym - 6) + " Q" + tx + "," + ym + " " + (tx + 6) + "," + ym + " H" + c.x }));
+      if (c.state === "running" && c.x - n.x >= 8) L.appendChild(sv("path", { "class": "lk " + (c.kind === "agent" || c.kind === "helper" ? "live" : "run"), d: "M" + (tx + 6) + "," + ym + " H" + c.x }));
+    });
+    var targets = [];
+    (n.segs || []).forEach(function (s) { if (s.rows) s.rows.forEach(function (r) { targets.push(r.items[0]); }); else targets = targets.concat(s.items); });
+    targets.forEach(function (c) {
+      var x1 = n.x + n.w, y1 = n.y + n.h / 2, x2 = c.x, y2 = c.y + c.h / 2, xm = x1 + Math.min(22, (x2 - x1) / 2);
+      var dy = y2 - y1, r = Math.min(8, Math.abs(dy) / 2), s = dy < 0 ? -1 : 1, d;
+      if (Math.abs(dy) < 1) { d = "M" + x1 + "," + y1 + " H" + x2; r = 0; }
+      else d = "M" + x1 + "," + y1 + " H" + (xm - r) + " Q" + xm + "," + y1 + " " + xm + "," + (y1 + s * r) + " V" + (y2 - s * r) + " Q" + xm + "," + y2 + " " + (xm + r) + "," + y2 + " H" + x2;
+      L.appendChild(sv("path", { "class": "lk", d: d }));
+      // only the last stub into a running child is coloured; only stubs into running agents move
+      if (c.state === "running") L.appendChild(sv("path", { "class": "lk " + (c.kind === "agent" || c.kind === "helper" ? "live" : "run"), d: "M" + (xm + r) + "," + y2 + " H" + x2 }));
+    });
+    // the other boxes of a grid row hang off the one before it by a short stub, so none of them looks unconnected
+    (n.segs || []).forEach(function (s) {
+      if (!s.rows) return;
+      s.rows.forEach(function (row) {
+        for (var i = 1; i < row.items.length; i++) {
+          var a = row.items[i - 1], c = row.items[i];
+          L.appendChild(sv("path", { "class": "lk", d: "M" + (a.x + a.w) + "," + (a.y + a.h / 2) + " H" + c.x }));
+        }
+      });
+    });
+  });
+  var fx0 = 1e9, fy0 = 1e9, fx1 = -1e9, fy1 = -1e9, anyFocus = false;
+  lay.nodes.forEach(function (n) {
+    if (focus.step && n.task === focus.step) { anyFocus = true; fx0 = Math.min(fx0, n.x); fy0 = Math.min(fy0, n.y); fx1 = Math.max(fx1, n.x + n.w); fy1 = Math.max(fy1, n.y + n.h); }
+  });
+  // text hidden by the zoomed-out style measures as 0, so show it while fitting; applyVp puts the style back
+  svg.classList.remove("far");
+  lay.nodes.forEach(function (n) {
+    var g = nodeEl(n);
+    if (n.sig !== undefined) { nextSig[n.id] = n.sig; if (prevSig && prevSig[n.id] !== undefined && prevSig[n.id] !== n.sig) g.classList.add("changed"); }
+    N.appendChild(g);
+    fitNode(g);
+  });
+  applyHighlight();
+  if (dataChanged) prevSig = nextSig;
+  treeBox = { w: lay.width, h: lay.height }; treeNodes = lay.nodes;
+  if (needFit) { fitTree(); needFit = false; } else applyVp();
+  if (focus.pending && anyFocus) { focus.pending = false; panTo({ x: fx0, y: fy0, w: fx1 - fx0, h: fy1 - fy0 }); }
+  else if (focus.pending) { focus.pending = false; }
+}
+var treeBox = { w: 600, h: 400 }, treeNodes = [], relayout = false, userMoved = false, fitAll = false, FIT_M = 14;
+function applyVp() { $("vp").setAttribute("transform", "translate(" + vp.x + "," + vp.y + ") scale(" + vp.k + ")"); $("treeSvg").classList.toggle("far", vp.k < 0.5); }
+// Fit and the first view zoom to the drawn boxes in both directions, never above full size. The first view stops at
+// 0.6 (0.5 in a narrow box) so the text stays readable; a bigger tree then starts at its top left and is panned.
+// Fit (the button) shows the whole tree down to 0.2, the smallest zoom.
+function fitTree(all) {
+  var svg = $("treeSvg"), el = svg.getBoundingClientRect(), minK = minScale(all);
+  function place(mt, mb) {
+    var aw = el.width - 2 * FIT_M, ah = el.height - mt - mb;
+    var k = Math.max(minK, Math.min(aw / Math.max(1, treeBox.w), ah / Math.max(1, treeBox.h), 1));
+    return { k: k, x: treeBox.w * k <= aw ? FIT_M + (aw - treeBox.w * k) / 2 : FIT_M, y: treeBox.h * k <= ah ? mt + (ah - treeBox.h * k) / 2 : mt };
+  }
+  // the zoom buttons and the hint float over the tree: if a box would sit under one, leave a margin for it
+  function rel(e) {
+    if (!e || e.hidden || getComputedStyle(e).display === "none") return null;
+    var r = e.getBoundingClientRect(); return r.width ? { l: r.left - el.left, t: r.top - el.top, r: r.right - el.left, b: r.bottom - el.top } : null;
+  }
+  function hits(f, o) {
+    return o && treeNodes.some(function (n) {
+      var l = f.x + n.x * f.k, t = f.y + n.y * f.k;
+      return l < o.r && o.l < l + (n.w + (foldable(n) ? TOGGLE_R : 0)) * f.k && t < o.b && o.t < t + n.h * f.k;
+    });
+  }
+  var tools = rel(document.querySelector(".tv-tools")), hint = rel($("tvHint")), f = place(FIT_M, FIT_M);
+  if (hits(f, tools) || hits(f, hint)) {
+    var mt = FIT_M, mb = FIT_M;
+    [tools, hint].forEach(function (o) { if (!o) return; if (o.t < el.height / 2) mt = Math.max(mt, o.b + 6); else mb = Math.max(mb, el.height - o.t + 6); });
+    f = place(mt, mb);
+  }
+  vp.k = f.k; vp.x = f.x; vp.y = f.y; userMoved = false; boxSize = Math.round(el.width) + "x" + Math.round(el.height);
+  applyVp();
+}
+// a new box size re-picks the grid and re-fits, unless the person has moved or zoomed the tree since the last fit
+function refitIfUntouched() {
+  if (!data || userMoved || dragging) { if (data) applyVp(); return; }
+  // the redraw replaces every box: put the keyboard focus back on the box that had it
+  var k = activeKey(); relayout = true; needFit = true; drawTreeView(); if (k) focusKey(k);
+}
+function zoomAt(f, cx, cy) {
+  userMoved = true;
+  var k2 = Math.min(2.5, Math.max(0.2, vp.k * f)), r = k2 / vp.k;
+  vp.x = cx - (cx - vp.x) * r; vp.y = cy - (cy - vp.y) * r; vp.k = k2; applyVp();
+}
+function activeKey() { var a = document.activeElement; return a && a.dataset ? a.dataset.key || "" : ""; }
+function toggleFold(n) { var k = activeKey(); collapsedUser[n.id] = !isFolded(n); drawTreeView(); focusKey(k); } // a fold changes only its own box: the grid width stays, so the other steps do not reflow
+// what a click (or Enter) on a box does: unfold a one-line done step or chip, open its details, pin a task step, or fold a group that has no details
+function activateNode(n) {
+  if (n.slim || n.kind === "group") toggleFold(n);
+  else if (n.key) openDrawer(n.key);
+  else if (n.kind === "task" && n.id !== "task|other") selectStep(n.task || n.label);
+  else if (n.children.length) toggleFold(n);
+}
+// from 1050 px wide the CSS makes the tree box fill the window under the header; between 601 and 1049 px (side column
+// below the tree) the box is as tall as the window below it allows; on a phone the CSS gives it a fixed height
+function sizeLayout() {
+  var hd = document.querySelector("header"), tv = $("treeView");
+  document.documentElement.style.setProperty("--stick", (getComputedStyle(hd).position === "sticky" ? hd.offsetHeight : 0) + "px");
+  if (window.innerWidth <= 600 || window.innerWidth >= 1050) { tv.style.height = ""; return; }
+  var top = tv.getBoundingClientRect().top + window.scrollY;
+  tv.style.height = Math.max(420, Math.round(window.innerHeight - top - 16)) + "px";
+}
+var resizeRaf = 0, boxSize = "";
+window.addEventListener("resize", function () { cancelAnimationFrame(resizeRaf); resizeRaf = requestAnimationFrame(function () { sizeLayout(); treeResized(); }); });
+function treeResized() {
+  var r = $("treeSvg").getBoundingClientRect(), s = Math.round(r.width) + "x" + Math.round(r.height);
+  if (s === boxSize || !r.width || cDrag) { if (data) applyVp(); return; }
+  boxSize = s; refitIfUntouched();
+}
+// the box also changes size without a window resize (the header gains a line, the column divider is released)
+if (window.ResizeObserver) new ResizeObserver(function () { cancelAnimationFrame(resizeRaf); resizeRaf = requestAnimationFrame(treeResized); }).observe($("treeSvg"));
+(function initTree() {
+  var svg = $("treeSvg"), ptrs = {}, startDist = 0, moved = 0, downTarget = null;
+  function rel(e) { var b = svg.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; }
+  svg.addEventListener("pointerdown", function (e) {
+    svg.setPointerCapture(e.pointerId); ptrs[e.pointerId] = rel(e); moved = 0; downTarget = e.target; dragging = true; svg.classList.add("drag");
+    var ids = Object.keys(ptrs); if (ids.length === 2) startDist = Math.hypot(ptrs[ids[0]].x - ptrs[ids[1]].x, ptrs[ids[0]].y - ptrs[ids[1]].y);
+  });
+  svg.addEventListener("pointermove", function (e) {
+    if (!ptrs[e.pointerId]) return;
+    var now = rel(e), old = ptrs[e.pointerId], ids = Object.keys(ptrs);
+    if (ids.length === 1) { vp.x += now.x - old.x; vp.y += now.y - old.y; moved += Math.abs(now.x - old.x) + Math.abs(now.y - old.y); if (moved >= 6) userMoved = true; applyVp(); }
+    else if (ids.length === 2) {
+      ptrs[e.pointerId] = now;
+      var a = ptrs[ids[0]], b = ptrs[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (startDist) zoomAt(d / startDist, (a.x + b.x) / 2, (a.y + b.y) / 2);
+      startDist = d; moved += 10; return;
+    }
+    ptrs[e.pointerId] = now;
+  });
+  function up(e) {
+    if (!ptrs[e.pointerId]) return;
+    delete ptrs[e.pointerId]; startDist = 0;
+    if (!Object.keys(ptrs).length) {
+      dragging = false; svg.classList.remove("drag");
+      if (moved >= 6) $("tvHint").classList.add("gone");
+      if (moved < 6 && downTarget) {
+        var g = downTarget.closest ? downTarget.closest("g.tn") : null;
+        if (g && g.__node) {
+          var n = g.__node, onToggle = downTarget.closest && downTarget.closest("g.tg");
+          if (onToggle) toggleFold(n); else activateNode(n);
+        } else if (focus.step) { clearFocus(); }
+      }
+      if (treeDirty) { treeDirty = false; drawTreeView(); }
+    }
+  }
+  svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
+  svg.addEventListener("wheel", function (e) { e.preventDefault(); var p = rel(e); zoomAt(Math.exp(-e.deltaY * 0.0016), p.x, p.y); }, { passive: false });
+  svg.addEventListener("keydown", function (e) {
+    var g = e.target.closest ? e.target.closest("g.tn") : null;
+    if (!g || !g.__node) return;
+    var n = g.__node, folded = foldable(n) && isFolded(n);
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activateNode(n); }
+    else if ((e.key === "+" || e.key === "=" || e.key === "ArrowRight") && folded) { e.preventDefault(); toggleFold(n); }
+    else if ((e.key === "-" || e.key === "ArrowLeft") && foldable(n) && !folded) { e.preventDefault(); toggleFold(n); }
+  });
+  // keyboard focus on a box outside the visible part of the tree pans the tree to it
+  svg.addEventListener("focusin", function (e) {
+    var tv = $("treeView"); tv.scrollTop = 0; tv.scrollLeft = 0;
+    if (restoring) return;
+    var g = e.target.closest ? e.target.closest("g.tn") : null;
+    if (!g || !g.__node) return;
+    var n = g.__node, b = svg.getBoundingClientRect(), x0 = vp.x + n.x * vp.k, y0 = vp.y + n.y * vp.k;
+    if (x0 >= 0 && y0 >= 0 && x0 + n.w * vp.k <= b.width && y0 + n.h * vp.k <= b.height) return;
+    vp.x = b.width / 2 - (n.x + n.w / 2) * vp.k; vp.y = b.height / 2 - (n.y + n.h / 2) * vp.k; applyVp();
+  });
+  $("tvIn").addEventListener("click", function () { var b = svg.getBoundingClientRect(); zoomAt(1.25, b.width / 2, b.height / 2); });
+  $("tvOut").addEventListener("click", function () { var b = svg.getBoundingClientRect(); zoomAt(0.8, b.width / 2, b.height / 2); });
+  $("tvFit").addEventListener("click", function () { if (data) { relayout = true; fitAll = true; drawTreeView(); fitAll = false; } fitTree(true); }); $("tvClear").addEventListener("click", clearFocus);
+})();
+
+/* ---------- side column layout: panel order, heights, folds and the column width, kept in this browser ---------- */
+var LAYOUT_KEY = "dash-layout", SIDE_W = 370, SIDE_MIN = 260, BODY_MIN = 30;
+var colLayout = { order: null, h: {}, fold: {}, w: 0 }, panelIds = [], panelName = {};
+var pDrag = null, pSize = null, cDrag = null, layPending = false, layPendingChanged = false;
+function layBusy() { return !!((pDrag && pDrag.on) || pSize || cDrag); }
+function loadLayout() {
+  var raw = null, o = null;
+  try { raw = localStorage.getItem(LAYOUT_KEY); } catch (e) { raw = null; }
+  try { o = raw ? JSON.parse(raw) : null; } catch (e) { o = null; }
+  if (!o || typeof o !== "object") return;
+  if (Array.isArray(o.order)) colLayout.order = o.order.filter(function (x) { return typeof x === "string"; });
+  if (o.h && typeof o.h === "object") Object.keys(o.h).forEach(function (k) { var v = Number(o.h[k]); if (isFinite(v) && v >= BODY_MIN && v < 20000) colLayout.h[k] = Math.round(v); });
+  if (o.fold && typeof o.fold === "object") Object.keys(o.fold).forEach(function (k) { if (o.fold[k] === true) colLayout.fold[k] = true; });
+  var w = Number(o.w); if (isFinite(w) && w >= SIDE_MIN && w < 5000) colLayout.w = Math.round(w);
+}
+function saveLayout() {
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(colLayout)); } catch (e) {}
+}
+function say(t) { var m = $("layMsg"); m.textContent = ""; setTimeout(function () { m.textContent = t; }, 30); }
+function sideCol() { return $("sideCol"); }
+function panelEls() { return Array.prototype.filter.call(sideCol().children, function (p) { return p.classList.contains("panel") && p.id; }); }
+// the panels on screen, top to bottom (the quiet Needs-you panel can sit lower than its place in the page)
+function shownPanels() {
+  return panelEls().filter(function (p) { return !p.hidden && p.getClientRects().length > 0; })
+    .map(function (p, i) { return { p: p, i: i, t: p.getBoundingClientRect().top }; })
+    .sort(function (a, b) { return (a.t - b.t) || (a.i - b.i); }).map(function (x) { return x.p; });
+}
+// the saved order, with panels it does not know put back in their default place
+function mergedOrder() {
+  var ids = panelIds, saved = colLayout.order;
+  if (!saved) return ids.slice();
+  var out = [];
+  saved.forEach(function (id) { if (ids.indexOf(id) >= 0 && out.indexOf(id) < 0) out.push(id); });
+  ids.forEach(function (id, i) {
+    if (out.indexOf(id) >= 0) return;
+    var j = i - 1;
+    while (j >= 0 && out.indexOf(ids[j]) < 0) j--;
+    out.splice(j >= 0 ? out.indexOf(ids[j]) + 1 : 0, 0, id);
+  });
+  return out;
+}
+function applyOrder() {
+  var col = sideCol(), order = mergedOrder(), act = document.activeElement;
+  col.classList.toggle("custom", !!colLayout.order);
+  var now = panelEls().map(function (p) { return p.id; });
+  if (now.join("|") !== order.join("|")) order.forEach(function (id) { col.appendChild($(id)); });
+  // moving a panel in the page drops the focus inside it: put it back
+  if (act && act !== document.activeElement && col.contains(act)) { try { act.focus({ preventScroll: true }); } catch (e) {} }
+}
+// put panel id just before (or just after) panel target; hidden panels keep their places
+function placePanel(id, target, after) {
+  var dom = panelEls().map(function (p) { return p.id; }), full = shownPanels().map(function (p) { return p.id; });
+  // start from what is on screen, then put each hidden panel back right after the panel it followed
+  dom.forEach(function (x, i) { if (full.indexOf(x) < 0) full.splice(i ? full.indexOf(dom[i - 1]) + 1 : 0, 0, x); });
+  if (id === target) return false;
+  var before = full.join("|");
+  full.splice(full.indexOf(id), 1);
+  full.splice(full.indexOf(target) + (after ? 1 : 0), 0, id);
+  var changed = full.join("|") !== before || !colLayout.order;
+  colLayout.order = full;
+  applyOrder(); saveLayout(); refreshMoveBtns();
+  var pos = shownPanels().map(function (p) { return p.id; });
+  say(panelName[id] + " moved to place " + (pos.indexOf(id) + 1) + " of " + pos.length + ".");
+  return changed;
+}
+function moveBy(id, dir, btn) {
+  var vis = shownPanels().map(function (p) { return p.id; }), i = vis.indexOf(id), j = i + dir;
+  if (i < 0) return;
+  if (j < 0 || j >= vis.length) { say(panelName[id] + " is already " + (dir < 0 ? "at the top." : "at the bottom.")); return; }
+  placePanel(id, vis[j], dir > 0);
+  var el = btn || $(id).__lay.grip;
+  try { el.focus({ preventScroll: true }); } catch (e) {}
+  if (el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+}
+function refreshMoveBtns() {
+  var vis = shownPanels();
+  panelEls().forEach(function (p) {
+    var L = p.__lay; if (!L) return;
+    var i = vis.indexOf(p);
+    L.up.setAttribute("aria-disabled", i <= 0 ? "true" : "false");
+    L.down.setAttribute("aria-disabled", i < 0 || i === vis.length - 1 ? "true" : "false");
+  });
+}
+function setHeight(id, px, keep) {
+  var p = $(id), L = p.__lay;
+  if (px === null || px === undefined) { delete colLayout.h[id]; L.body.style.height = ""; p.classList.remove("sized"); }
+  else { px = Math.max(BODY_MIN, Math.round(px)); colLayout.h[id] = px; L.body.style.height = px + "px"; p.classList.add("sized"); }
+  L.rsz.setAttribute("aria-valuetext", colLayout.h[id] ? colLayout.h[id] + " pixels tall" : "natural height");
+  L.rsz.setAttribute("aria-valuemin", String(BODY_MIN)); L.rsz.setAttribute("aria-valuenow", String(colLayout.h[id] || Math.round(L.body.getBoundingClientRect().height) || BODY_MIN));
+  if (keep !== false) { L.auto.hidden = !colLayout.h[id]; saveLayout(); }
+}
+function setFold(id, on, keep) {
+  var p = $(id), L = p.__lay;
+  if (on) colLayout.fold[id] = true; else delete colLayout.fold[id];
+  p.classList.toggle("folded", !!on);
+  L.fold.setAttribute("aria-expanded", on ? "false" : "true");
+  L.fold.setAttribute("aria-label", (on ? "Unfold " : "Fold ") + panelName[id]);
+  L.fold.title = on ? "Show this panel" : "Fold to the title";
+  if (keep !== false) { saveLayout(); refreshMoveBtns(); }
+}
+function sideMax() {
+  var m = document.querySelector("main"), cs = getComputedStyle(m);
+  var w = m.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  return Math.max(SIDE_MIN, Math.floor(w * 0.6 - 18));
+}
+// asIs: a saved width applied on load is not clamped to this window (the CSS rule clamps what is shown)
+function setWidth(px, keep, asIs) {
+  var m = document.querySelector("main");
+  if (px === null || px === undefined) { colLayout.w = 0; m.style.removeProperty("--side-w"); }
+  else { px = Math.round(Math.max(SIDE_MIN, asIs ? px : Math.min(sideMax(), px))); colLayout.w = px; m.style.setProperty("--side-w", px + "px"); }
+  widthAria();
+  if (keep !== false) saveLayout();
+  sizeLayout(); if (data) applyVp();
+}
+// the side column's track width (the column element itself is a few pixels wider for focus rings)
+function sideW() {
+  var t = getComputedStyle(document.querySelector("main")).gridTemplateColumns.split(" "), v = parseFloat(t[t.length - 1]);
+  return t.length === 3 && isFinite(v) ? v : colLayout.w || SIDE_W;
+}
+// the saved width is a wish: the page's own rule keeps the tree at 40 percent or more on a narrow window
+function widthAria() {
+  var d = $("colDiv"), now = Math.round(sideW());
+  d.setAttribute("aria-valuemin", String(SIDE_MIN)); d.setAttribute("aria-valuemax", String(sideMax())); d.setAttribute("aria-valuenow", String(now));
+  d.setAttribute("aria-valuetext", "Side column " + now + " pixels wide");
+}
+function resetLayout() {
+  colLayout = { order: null, h: {}, fold: {}, w: 0 };
+  try { localStorage.removeItem(LAYOUT_KEY); } catch (e) {}
+  applyLayout(); say("Layout reset to the default.");
+}
+function applyLayout() {
+  applyOrder();
+  panelEls().forEach(function (p) { if (!p.__lay) return; setHeight(p.id, colLayout.h[p.id], false); p.__lay.auto.hidden = !colLayout.h[p.id]; setFold(p.id, !!colLayout.fold[p.id], false); });
+  setWidth(colLayout.w || null, false, true);
+  refreshMoveBtns();
+}
+var ICONS = {
+  up: "M3.5 10 8 5.5 12.5 10", down: "M3.5 6 8 10.5 12.5 6", fold: "M3.5 6 8 10.5 12.5 6", auto: "M8 2.5v11M5 5.5l3-3 3 3M5 10.5l3 3 3-3"
+};
+function iconSvg(name) {
+  var s = sv("svg", { viewBox: "0 0 16 16", "aria-hidden": "true", focusable: "false" });
+  if (name === "grip") [4, 8, 12].forEach(function (y) { [5.5, 10.5].forEach(function (x) { s.appendChild(sv("circle", { cx: x, cy: y, r: 1.45 })); }); });
+  else s.appendChild(sv("path", { d: ICONS[name] }));
+  return s;
+}
+function pbtn(cls, label, iconName, key, title) {
+  var b = h("button", "pbtn " + cls); b.type = "button";
+  b.setAttribute("aria-label", label); b.dataset.key = key; if (title) b.title = title;
+  b.appendChild(iconSvg(iconName));
+  return b;
+}
+// drop place for a dragged panel: before the first panel whose middle is below the pointer, else after the last one
+function dropAt(y, moving) {
+  var list = shownPanels().filter(function (p) { return p !== moving; });
+  if (!list.length) return null;
+  for (var i = 0; i < list.length; i++) { var r = list[i].getBoundingClientRect(); if (y < r.top + r.height / 2) return { p: list[i], after: false }; }
+  return { p: list[list.length - 1], after: true };
+}
+function scrollerOf() {
+  var col = sideCol(), cs = getComputedStyle(col);
+  if (cs.display !== "contents" && /(auto|scroll)/.test(cs.overflowY) && col.scrollHeight > col.clientHeight + 1) return col;
+  return window;
+}
+function showDrop() {
+  var line = $("dropLine"), t = dropAt(pDrag.y, pDrag.p);
+  pDrag.t = t;
+  if (!t) { line.style.display = "none"; return; }
+  var r = t.p.getBoundingClientRect(), y = t.after ? r.bottom + 7 : r.top - 7;
+  var sc = scrollerOf(), top = 0, bottom = window.innerHeight;
+  if (sc !== window) { var b = sc.getBoundingClientRect(); top = b.top; bottom = b.bottom; }
+  y = Math.max(top + 2, Math.min(bottom - 4, y));
+  line.style.display = "block"; line.style.width = Math.round(r.width) + "px";
+  line.style.transform = "translate(" + Math.round(r.left) + "px," + Math.round(y - 1.5) + "px)";
+  line.firstChild.textContent = panelName[pDrag.id] + (t.after ? " goes below " : " goes above ") + panelName[t.p.id];
+}
+function autoScroll() {
+  if (!pDrag || !pDrag.on) return;
+  var sc = scrollerOf(), top, bottom, y = pDrag.y, d = 0, edge = 56;
+  if (sc === window) { top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--stick")) || 0; bottom = window.innerHeight; }
+  else { var b = sc.getBoundingClientRect(); top = b.top; bottom = b.bottom; }
+  if (y < top + edge) d = -Math.ceil((top + edge - y) / 5);
+  else if (y > bottom - edge) d = Math.ceil((y - (bottom - edge)) / 5);
+  if (d) { if (sc === window) window.scrollBy(0, d); else sc.scrollTop += d; showDrop(); }
+  pDrag.raf = requestAnimationFrame(autoScroll);
+}
+function endPanelDrag(commit, y) {
+  var d = pDrag; if (!d) return;
+  pDrag = null;
+  cancelAnimationFrame(d.raf);
+  $("dropLine").style.display = "none";
+  document.body.classList.remove("pdrag"); d.p.classList.remove("lifted");
+  if (d.on && commit) {
+    if (y !== undefined) d.t = dropAt(y, d.p);
+    if (d.t) placePanel(d.id, d.t.p.id, d.t.after);
+  }
+  afterLayDrag();
+}
+function afterLayDrag() {
+  if (layPending && !layBusy()) { var ch = layPendingChanged; layPending = false; layPendingChanged = false; dataChanged = ch; draw(); dataChanged = false; }
+}
+function wirePanel(p) {
+  var h2 = p.querySelector("h2"); if (!h2 || p.__lay) return;
+  var id = p.id, name = h2.textContent;
+  panelIds.push(id); panelName[id] = name;
+  h2.id = id + "Title";
+  var body = h("div", "pbody"); body.id = id + "Body";
+  while (h2.nextSibling) body.appendChild(h2.nextSibling);
+  var head = h("div", "ph");
+  var grip = pbtn("grip", "Move " + name, "grip", "lay:g:" + id, "Drag to move this panel · Alt+Up or Alt+Down");
+  grip.setAttribute("aria-keyshortcuts", "Alt+ArrowUp Alt+ArrowDown");
+  grip.setAttribute("aria-describedby", "layHelp");
+  var up = pbtn("pmv", "Move " + name + " up", "up", "lay:u:" + id, "Move up");
+  var down = pbtn("pmv", "Move " + name + " down", "down", "lay:d:" + id, "Move down");
+  var auto = pbtn("auto", "Return " + name + " to its natural height", "auto", "lay:a:" + id, "Back to its natural height");
+  var fold = pbtn("fold", "Fold " + name, "fold", "lay:f:" + id, "Fold to the title");
+  fold.setAttribute("aria-controls", body.id); fold.setAttribute("aria-expanded", "true");
+  auto.hidden = true;
+  p.insertBefore(head, h2);
+  [grip, h2, up, down, auto, fold].forEach(function (x) { head.appendChild(x); });
+  p.appendChild(body);
+  var rsz = h("div", "rsz"); rsz.tabIndex = 0; rsz.dataset.key = "lay:r:" + id;
+  rsz.setAttribute("role", "separator"); rsz.setAttribute("aria-orientation", "horizontal");
+  rsz.setAttribute("aria-label", "Height of " + name); rsz.setAttribute("aria-controls", body.id);
+  rsz.title = "Drag to change the height · Shift+Up or Shift+Down · double-click for the natural height";
+  p.appendChild(rsz);
+  p.__lay = { grip: grip, up: up, down: down, auto: auto, fold: fold, body: body, rsz: rsz };
+
+  up.addEventListener("click", function () { if (up.getAttribute("aria-disabled") !== "true") moveBy(id, -1, up); else say(name + " is already at the top."); });
+  down.addEventListener("click", function () { if (down.getAttribute("aria-disabled") !== "true") moveBy(id, 1, down); else say(name + " is already at the bottom."); });
+  fold.addEventListener("click", function () { setFold(id, !colLayout.fold[id]); say(name + (colLayout.fold[id] ? " folded." : " unfolded.")); });
+  auto.addEventListener("click", function () { setHeight(id, null); say(name + " is back to its natural height."); try { grip.focus({ preventScroll: true }); } catch (e) {} });
+  grip.addEventListener("keydown", function (e) {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault(); moveBy(id, e.key === "ArrowUp" ? -1 : 1, grip);
+  });
+  grip.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0 || pDrag) return;
+    e.preventDefault();
+    try { grip.setPointerCapture(e.pointerId); } catch (x) {}
+    pDrag = { id: id, p: p, pid: e.pointerId, x0: e.clientX, y0: e.clientY, y: e.clientY, on: false, t: null, raf: 0 };
+  });
+  grip.addEventListener("pointermove", function (e) {
+    if (!pDrag || e.pointerId !== pDrag.pid) return;
+    pDrag.y = e.clientY;
+    if (!pDrag.on) {
+      if (Math.abs(e.clientX - pDrag.x0) + Math.abs(e.clientY - pDrag.y0) < 4) return;
+      pDrag.on = true; p.classList.add("lifted"); document.body.classList.add("pdrag");
+      pDrag.raf = requestAnimationFrame(autoScroll);
+    }
+    showDrop();
+  });
+  grip.addEventListener("pointerup", function (e) {
+    if (!pDrag || e.pointerId !== pDrag.pid) return;
+    // a quick drag can arrive as a press, one move and a release: decide from where it was released
+    if (!pDrag.on && Math.abs(e.clientX - pDrag.x0) + Math.abs(e.clientY - pDrag.y0) >= 4) pDrag.on = true;
+    endPanelDrag(true, e.clientY);
+  });
+  grip.addEventListener("pointercancel", function () { endPanelDrag(false); });
+  grip.addEventListener("lostpointercapture", function () { if (pDrag && pDrag.p === p) endPanelDrag(false); });
+
+  rsz.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0 || pSize) return;
+    e.preventDefault();
+    try { rsz.setPointerCapture(e.pointerId); } catch (x) {}
+    pSize = { pid: e.pointerId, y0: e.clientY, h0: body.getBoundingClientRect().height, moved: false };
+    rsz.classList.add("on"); document.body.classList.add("prsz");
+  });
+  rsz.addEventListener("pointermove", function (e) {
+    if (!pSize || e.pointerId !== pSize.pid) return;
+    if (!pSize.moved && Math.abs(e.clientY - pSize.y0) < 2) return;
+    pSize.moved = true; setHeight(id, pSize.h0 + e.clientY - pSize.y0, false);
+  });
+  function endSize(e) {
+    if (!pSize || (e && e.pointerId !== pSize.pid)) return;
+    var s = pSize; pSize = null;
+    rsz.classList.remove("on"); document.body.classList.remove("prsz");
+    if (e && e.type === "pointerup" && !s.moved && Math.abs(e.clientY - s.y0) >= 2) { s.moved = true; setHeight(id, s.h0 + e.clientY - s.y0, false); }
+    if (s.moved) { auto.hidden = !colLayout.h[id]; saveLayout(); say(name + " is " + colLayout.h[id] + " pixels tall."); }
+    afterLayDrag();
+  }
+  rsz.addEventListener("pointerup", endSize); rsz.addEventListener("pointercancel", endSize);
+  rsz.addEventListener("lostpointercapture", function () { endSize(null); });
+  rsz.addEventListener("dblclick", function () { setHeight(id, null); say(name + " is back to its natural height."); });
+  rsz.addEventListener("keydown", function (e) {
+    if (e.key === "Home") { e.preventDefault(); setHeight(id, null); say(name + " is back to its natural height."); return; }
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    var step = e.shiftKey ? 48 : 12, cur = colLayout.h[id] || body.getBoundingClientRect().height;
+    setHeight(id, cur + (e.key === "ArrowUp" ? -step : step));
+  });
+}
+(function initLayout() {
+  var help = h("span", "sr", "Drag, or press Alt with the up or down arrow, to move the panel."); help.id = "layHelp"; document.body.appendChild(help);
+  panelEls().forEach(wirePanel);
+  loadLayout();
+  applyLayout();
+  $("layoutReset").addEventListener("click", resetLayout);
+  var d = $("colDiv");
+  d.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0 || cDrag) return;
+    e.preventDefault();
+    try { d.setPointerCapture(e.pointerId); } catch (x) {}
+    cDrag = { pid: e.pointerId, x0: e.clientX, w0: sideW() };
+    d.classList.add("on"); document.body.classList.add("pcol");
+  });
+  d.addEventListener("pointermove", function (e) { if (cDrag && e.pointerId === cDrag.pid) setWidth(cDrag.w0 - (e.clientX - cDrag.x0), false); });
+  function endCol(e) {
+    if (!cDrag || (e && e.pointerId !== cDrag.pid)) return;
+    var c = cDrag; cDrag = null;
+    if (e && e.type === "pointerup") setWidth(c.w0 - (e.clientX - c.x0), false);
+    d.classList.remove("on"); document.body.classList.remove("pcol");
+    saveLayout(); afterLayDrag(); treeResized();
+  }
+  d.addEventListener("pointerup", endCol); d.addEventListener("pointercancel", endCol);
+  d.addEventListener("lostpointercapture", function () { endCol(null); });
+  d.addEventListener("dblclick", function () { setWidth(null); say("Side column back to its default width."); });
+  d.addEventListener("keydown", function (e) {
+    var step = e.shiftKey ? 64 : 16, cur = sideW();
+    if (e.key === "ArrowLeft") { e.preventDefault(); setWidth(cur + step); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); setWidth(cur - step); }
+    else if (e.key === "Home") { e.preventDefault(); setWidth(null); }
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && pDrag && pDrag.on) { e.stopPropagation(); endPanelDrag(false); } }, true);
+  window.addEventListener("resize", function () { widthAria(); refreshMoveBtns(); });
+})();
+function saveScrolls() {
+  var out = [{ el: null, t: window.scrollY, l: window.scrollX }, { el: sideCol(), t: sideCol().scrollTop }];
+  document.querySelectorAll("#sideCol .pbody, #events, #wts").forEach(function (el) { out.push({ el: el, t: el.scrollTop }); });
+  return out;
+}
+function restoreScrolls(list) {
+  list.forEach(function (s) {
+    if (!s.el) { if (Math.abs(window.scrollY - s.t) > 0.5) window.scrollTo(s.l, s.t); }
+    else if (Math.abs(s.el.scrollTop - s.t) > 0.5) s.el.scrollTop = s.t;
+  });
+}
+
+/* ---------- loop ---------- */
+var STALE_MS = 120000, PHONE = false, pausedHint = false;
+function ageText(sec) {
+  if (sec < 5) return "just now";
+  if (sec < 60) return sec + "s ago";
+  if (sec < 5400) return Math.round(sec / 60) + " min ago";
+  return (sec / 3600).toFixed(1) + " h ago";
+}
+function setMeta() {
+  var m = clear($("meta")), age = Math.round((Date.now() - data.generated) / 1000);
+  m.appendChild(document.createTextNode((data.project || "").split(/[\\/]/).filter(Boolean).pop() + " \u00b7 session " + (data.session || "none").slice(0, 8) + " \u00b7 updated "));
+  m.appendChild(h("span", "age" + (age * 1000 > STALE_MS ? " stale" : ""), ageText(age)));
+  if (pausedHint) m.appendChild(h("span", "age stale", " \u00b7 paused while hidden"));
+}
+function tickMeta() { if (data) setMeta(); }
+function selectionIn(el) {
+  var sel = window.getSelection && window.getSelection();
+  return !!(sel && !sel.isCollapsed && el.contains(sel.anchorNode));
+}
+function draw() {
+  // a redraw that arrives while a panel or the column divider is being dragged waits for the drag to end
+  if (layBusy()) { layPending = true; layPendingChanged = layPendingChanged || dataChanged; return; }
+  var k = activeKey(), sc = saveScrolls();
+  drawAll();
+  if (k) focusKey(k);
+  restoreScrolls(sc);
+  refreshMoveBtns();
+}
+function drawAll() { drawHeader(); drawLanes(); sizeLayout(); drawTreeView(); drawNeed(); drawPlan(); drawBurn(); drawReady(); drawTrains(); drawSide(); drawMix(); drawWorktrees(); drawEvents(); if (openKey && !selectionIn($("drawer"))) { var s = $("drawer").scrollTop; drawDrawer(); $("drawer").scrollTop = s; } }
+var lastRaw = "", failures = 0, dataChanged = false;
+function ingest(obj, key) {
+  failures = 0;
+  pausedHint = false;
+  if (key !== lastRaw) { lastRaw = key; data = obj; dataChanged = true; draw(); dataChanged = false; } else tickMeta();
+}
+function poll() {
+  fetch("status.json", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("collecting"); return r.text(); }).then(function (t) {
+    ingest(JSON.parse(t), t);
+  }).catch(function (err) {
+    if (err && err.message === "collecting") { clear($("banners")).appendChild(h("div", "banner info", "Collecting the first snapshot\u2026 this takes a few seconds.")); return; }
+    failures++;
+    if (failures > 1) { clear($("banners")).appendChild(h("div", "banner", "Cannot reach the dashboard server. Is run.py still running?")); }
+  });
+}
+function setTheme(t) {
+  theme = t;
+  if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
+  $("themeBtn").textContent = "Theme: " + t;
+  try { localStorage.setItem("dash-theme", t); } catch (e) {}
+}
+$("themeBtn").addEventListener("click", function () { setTheme(theme === "auto" ? "light" : theme === "light" ? "dark" : "auto"); });
+try { setTheme(localStorage.getItem("dash-theme") || "auto"); var f = localStorage.getItem("dash-filter"); if (f === "recent" || f === "day" || f === "live" || f === "attention" || f === "all") filter = f; } catch (e) { setTheme("auto"); }
+setInterval(function () { if (data) drawHeader(); }, 30000);
+var hiddenAt = document.hidden ? Date.now() : 0, refreshNow = function () {};
+function shown() {
+  var was = hiddenAt; hiddenAt = 0;
+  if (was && Date.now() - was > 60000) pausedHint = true;
+  if (data) setMeta();
+  refreshNow();
+}
+document.addEventListener("visibilitychange", function () { if (document.hidden) hiddenAt = Date.now(); else shown(); });
+window.addEventListener("focus", function () { if (!document.hidden) { if (data) setMeta(); refreshNow(); } });
+window.addEventListener("pageshow", function (e) { if (e.persisted && !document.hidden) { if (data) setMeta(); refreshNow(); } });  // restored from the back/forward cache
+setInterval(function () {
+  if (document.hidden && hiddenAt && Date.now() - hiddenAt > 60000) pausedHint = true;
+  if (data) setMeta();
+}, 5000);
+/*SOURCE_BEGIN*/
+// other projects with a running dashboard: listed by this server from the shared registry; choosing one opens that server
+function drawProjects(list) {
+  var sel = $("projSel"), me = String(location.port);
+  if (!list || list.length < 2) { sel.hidden = true; return; }
+  var names = {};
+  list.forEach(function (p) { names[p.name] = (names[p.name] || 0) + 1; });
+  clear(sel);
+  list.forEach(function (p) {
+    var label = (names[p.name] > 1 && p.parent ? p.parent + "/" : "") + p.name + " \u00b7 " + p.running + " running" + (p.needs ? " \u00b7 " + p.needs + " need you" : "");
+    var o = h("option", "", label); o.value = String(p.port); if (String(p.port) === me) o.selected = true; sel.appendChild(o);
+  });
+  sel.hidden = false;
+}
+function pollProjects() {
+  fetch("projects.json", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j) drawProjects(j.projects); }).catch(function () {});
+}
+$("projSel").addEventListener("change", function () {
+  var port = Number($("projSel").value);
+  if (port >= 1024 && port <= 65535) location.href = location.protocol + "//" + location.hostname + ":" + port + "/";
+});
+refreshNow = function () { poll(); pollProjects(); };
+poll();
+setInterval(poll, 5000);
+pollProjects();
+setInterval(pollProjects, 10000);
+/*SOURCE_END*/
+</script>
+</body>
+</html>
