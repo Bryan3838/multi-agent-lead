@@ -5,327 +5,386 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agent control room</title>
 <style>
+/* Claude's palette: warm paper and ink, one terracotta accent; status colours are used only on small marks */
 :root{
-  --bg:#f4f5f7;--panel:#fff;--panel2:#eef0f4;--text:#1b1f27;--muted:#596276;--line:#cfd5df;
-  --run:#1d4ed8;--run-bg:#dbe7ff;--done:#166534;--done-bg:#d9f2e1;--fail:#c62828;--fail-bg:#fde0e0;
-  --idle:#8a4f00;--idle-bg:#ffecc7;--stop:#8a4b5a;--stop-bg:#f1dfe4;--pend:#565e70;--pend-bg:#e6e9ef;--on-solid:#fff;
-  --shadow:0 1px 2px rgba(20,30,50,.08),0 2px 8px rgba(20,30,50,.05);
-  --m-opus:#7c3aed;--m-opus-bg:#ece4fd;--m-sonnet:#0a6670;--m-sonnet-bg:#d6f0f2;--m-haiku:#c2255c;--m-haiku-bg:#fbe0ea;--m-other:#565e70;--m-other-bg:#e6e9ef;
-  --fs-xs:11px;--fs-s:12px;--fs-m:13px;--fs-l:15px;--fs-xl:17px;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Consolas,Menlo,monospace;
+  --fs-xs:11px;--fs-s:12px;--fs-m:13px;--fs-l:14px;--fs-xl:16px;
+  --sp1:4px;--sp2:8px;--sp3:12px;--sp4:16px;--sp5:24px;
+  --r-s:6px;--r:8px;--r-l:12px;
+  --bg:#faf9f5;--sunk:#f5f4ee;--panel:#fff;--panel2:#f0eee6;--hover:#f0eee6;
+  --text:#141413;--text2:#3d3d3a;--muted:#73726c;--faint:#a3a199;--line:#e8e6dc;--line2:#d4d1c5;
+  --accent:#c96442;--accent-bg:#f6e8e2;
+  --run:#c96442;--run-bg:#f6e8e2;--done:#5a7d3f;--done-bg:#e8eedf;--fail:#b8403a;--fail-bg:#f7e2df;
+  --idle:#a16f12;--idle-bg:#f6ecd5;--stop:#8a887f;--stop-bg:#eeece4;--pend:#a3a199;--pend-bg:#f0eee6;--on-solid:#fff;
+  --m-opus:#c96442;--m-sonnet:#8c8473;--m-haiku:#c9c2b0;--m-other:#e0dcd0;
+  --shadow:0 1px 2px rgba(20,20,19,.05),0 8px 24px rgba(20,20,19,.08);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0f1218;--panel:#181c25;--panel2:#212633;--text:#e6e9f0;--muted:#8d97ab;--line:#303748;
-  --run:#6ea0ff;--run-bg:#1b2c52;--done:#4ade80;--done-bg:#12301d;--fail:#ff7b7b;--fail-bg:#3a1a1c;
-  --idle:#fbbf24;--idle-bg:#3a2d0e;--stop:#e39aae;--stop-bg:#34202a;--pend:#9aa3b6;--pend-bg:#262c3a;--on-solid:#0f1218;
-  --shadow:0 1px 2px rgba(0,0,0,.4);
-  --m-opus:#b79bff;--m-opus-bg:#2c2150;--m-sonnet:#5fd4de;--m-sonnet-bg:#103a40;--m-haiku:#ff8fb5;--m-haiku-bg:#451a2c;--m-other:#9aa3b6;--m-other-bg:#262c3a;
+  --bg:#262624;--sunk:#1f1e1d;--panel:#30302e;--panel2:#353432;--hover:#353432;
+  --text:#faf9f5;--text2:#c3c1b8;--muted:#9c9a92;--faint:#6c6a64;--line:#3a3936;--line2:#4b4a45;
+  --accent:#d97757;--accent-bg:rgba(217,119,87,.16);
+  --run:#d97757;--run-bg:rgba(217,119,87,.16);--done:#93b77a;--done-bg:rgba(147,183,122,.14);--fail:#e5786f;--fail-bg:rgba(229,120,111,.15);
+  --idle:#d6a64f;--idle-bg:rgba(214,166,79,.15);--stop:#9c9a92;--stop-bg:rgba(156,154,146,.14);--pend:#6c6a64;--pend-bg:#353432;--on-solid:#1f1e1d;
+  --m-opus:#d97757;--m-sonnet:#a89f8c;--m-haiku:#6f6a5e;--m-other:#4b4a45;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.35);
 }}
 :root[data-theme="dark"]{
-  --bg:#0f1218;--panel:#181c25;--panel2:#212633;--text:#e6e9f0;--muted:#8d97ab;--line:#303748;
-  --run:#6ea0ff;--run-bg:#1b2c52;--done:#4ade80;--done-bg:#12301d;--fail:#ff7b7b;--fail-bg:#3a1a1c;
-  --idle:#fbbf24;--idle-bg:#3a2d0e;--stop:#e39aae;--stop-bg:#34202a;--pend:#9aa3b6;--pend-bg:#262c3a;--on-solid:#0f1218;
-  --shadow:0 1px 2px rgba(0,0,0,.4);
-  --m-opus:#b79bff;--m-opus-bg:#2c2150;--m-sonnet:#5fd4de;--m-sonnet-bg:#103a40;--m-haiku:#ff8fb5;--m-haiku-bg:#451a2c;--m-other:#9aa3b6;--m-other-bg:#262c3a;
+  --bg:#262624;--sunk:#1f1e1d;--panel:#30302e;--panel2:#353432;--hover:#353432;
+  --text:#faf9f5;--text2:#c3c1b8;--muted:#9c9a92;--faint:#6c6a64;--line:#3a3936;--line2:#4b4a45;
+  --accent:#d97757;--accent-bg:rgba(217,119,87,.16);
+  --run:#d97757;--run-bg:rgba(217,119,87,.16);--done:#93b77a;--done-bg:rgba(147,183,122,.14);--fail:#e5786f;--fail-bg:rgba(229,120,111,.15);
+  --idle:#d6a64f;--idle-bg:rgba(214,166,79,.15);--stop:#9c9a92;--stop-bg:rgba(156,154,146,.14);--pend:#6c6a64;--pend-bg:#353432;--on-solid:#1f1e1d;
+  --m-opus:#d97757;--m-sonnet:#a89f8c;--m-haiku:#6f6a5e;--m-other:#4b4a45;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.35);
 }
-*{box-sizing:border-box}
+*{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+[hidden]{display:none!important}
 html{color-scheme:light dark}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="dark"]{color-scheme:dark}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-body{overflow-x:clip}
+body{margin:0;background:var(--bg);color:var(--text);font:var(--fs-m)/1.45 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:clip}
 body.open{overflow:hidden}
-code,.mono{font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;font-size:var(--fs-s)}
+::selection{background:var(--accent-bg)}
+code,.mono{font-family:var(--mono);font-size:var(--fs-s)}
 button{font:inherit;color:inherit;cursor:pointer}
-:focus-visible{outline:2px solid var(--run);outline-offset:2px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 [role="button"]{cursor:pointer}
-[role="button"]:focus-visible{outline:2px solid var(--run);outline-offset:1px;border-radius:6px}
-header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:7px 16px;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center}
+[role="button"]:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-radius:var(--r-s)}
+svg.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+svg.ic .f{fill:currentColor;stroke:none}
+.muted{color:var(--muted)}.small{font-size:var(--fs-s)}
+.err{color:var(--fail);font-size:var(--fs-s);overflow-wrap:anywhere}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* header: one row of title, counts, usage and the page tools */
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:var(--sp2) var(--sp4);display:flex;flex-wrap:wrap;gap:var(--sp2) var(--sp5);align-items:center;min-height:48px}
 @media (max-height:760px){header{position:static}}
-.hid{min-width:0}
-h1{font-size:var(--fs-l);margin:0;letter-spacing:.02em;line-height:1.25}
+.hid{display:flex;align-items:baseline;gap:var(--sp2);min-width:0}
+h1{font-size:var(--fs-l);font-weight:600;margin:0;white-space:nowrap;line-height:1.3}
 .sub{color:var(--muted);font-size:var(--fs-s)}
-.stats{display:flex;flex-wrap:wrap;gap:5px}
-.stat{padding:2px 8px;border-radius:999px;font-weight:600;font-size:var(--fs-s);background:var(--pend-bg);color:var(--pend);white-space:nowrap}
-.stat b{font-size:var(--fs-m);margin-right:4px}
-.stat.running{background:var(--run-bg);color:var(--run)}.stat.done{background:var(--done-bg);color:var(--done)}
-.stat.failed{background:var(--fail-bg);color:var(--fail)}.stat.idle{background:var(--idle-bg);color:var(--idle)}
-.stat.killed{background:var(--stop-bg);color:var(--stop)}
-/* usage bars: on the pills' row when it has room, else one row below; each bar is one label line over its track */
-.bars{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:3px 18px;flex:1 1 400px;min-width:0;margin-left:auto}
-.bar{flex:1 1 230px;max-width:300px;min-width:170px}
-.bars .sub{flex:1 1 200px;order:-1;text-align:right;font-size:var(--fs-xs);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.toolrow{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:6px 12px;margin-bottom:8px}
-.toolrow .filters{margin-bottom:0;flex:1 1 auto;min-width:0}
-.tools{display:flex;gap:8px;align-items:center;flex-shrink:0;margin-left:auto}
-.bar .lbl{display:flex;align-items:baseline;gap:0 6px;font-size:var(--fs-xs);color:var(--muted);white-space:nowrap;min-width:0}
-.bar .lbl .pc{font-weight:600;color:var(--text)}
-.bar .lbl .rs{margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.bar .track{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:2px}
-.bar .fill{height:100%;background:var(--done)}
-.bar.warn .fill{background:var(--idle)}.bar.hot .fill{background:var(--fail)}
-.bar.warn .lbl .pc{color:var(--idle);font-weight:700}.bar.hot .lbl .pc{color:var(--fail);font-weight:700}
-.iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:3px 9px;font-size:var(--fs-s)}
-.banner{margin:10px 16px 0;padding:8px 12px;border-radius:8px;background:var(--fail-bg);color:var(--fail);font-weight:600}
+#meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.age.stale{color:var(--idle)}
+.stats{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp1) var(--sp3);font-size:var(--fs-s);color:var(--muted)}
+.stat{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.stat b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.stat .dot{width:7px;height:7px}
+.stat .ic{width:13px;height:13px}
+.stat.zero{display:none}
+.stat.warn,.stat.warn b{color:var(--idle)}
+.stat.bad,.stat.bad b{color:var(--fail)}
+.vsep{width:1px;height:14px;background:var(--line2)}
+.hright{display:flex;align-items:center;gap:var(--sp2) var(--sp4);margin-left:auto;min-width:0;flex-wrap:wrap;justify-content:flex-end}
+.bars{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp1) var(--sp4);min-width:0;margin-left:auto}
+.bar{display:grid;grid-template-columns:auto 56px auto auto;align-items:center;gap:0 var(--sp2);font-size:var(--fs-s);color:var(--muted);white-space:nowrap}
+.bar .track{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.bar .fill{height:100%;background:var(--muted)}
+.bar .pc{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums;text-align:right;min-width:3ch}
+.bar .rs{display:inline-flex;align-items:center;gap:3px;color:var(--faint);font-variant-numeric:tabular-nums}
+.bar .rs .ic{width:11px;height:11px}
+.bar.warn .fill{background:var(--idle)}.bar.warn .pc{color:var(--idle)}
+.bar.hot .fill{background:var(--fail)}.bar.hot .pc{color:var(--fail)}
+.bars .sub{display:inline-flex;align-items:center;gap:4px;color:var(--idle);white-space:nowrap}
+.bars .sub.none{color:var(--faint)}
+.bars .sub .ic{width:13px;height:13px}
+.tools{display:flex;gap:2px;align-items:center}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;min-width:28px;padding:0 var(--sp2);border:0;background:none;border-radius:var(--r-s);color:var(--muted);font-size:var(--fs-s);white-space:nowrap}
+.iconbtn:hover{background:var(--hover);color:var(--text)}
+.iconbtn.ico{padding:0;width:28px}
+.projsel{font:inherit;font-size:var(--fs-s);color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:var(--r-s);height:28px;padding:0 var(--sp2);max-width:220px;text-overflow:ellipsis}
+.banner{display:flex;align-items:center;gap:var(--sp2);margin:var(--sp2) var(--sp4) 0;padding:6px var(--sp3);border-radius:var(--r);background:var(--fail-bg);color:var(--fail);font-size:var(--fs-s)}
 .banner.info{background:var(--idle-bg);color:var(--idle)}
-main{padding:10px 16px 24px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin:0 auto}
-/* desktop: the app fills the window under the header; the tree box and the side column each scroll inside themselves */
+
+/* page grid: the tree on the left, the side column on the right */
+main{padding:var(--sp3) var(--sp4) var(--sp4);display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp4);margin:0 auto}
 @media (min-width:1050px){
   body{display:flex;flex-direction:column;height:100vh}
   header,#banners{flex:none}
   header{position:static}
-  main{flex:1 1 auto;width:100%;min-height:420px;padding-bottom:12px;grid-template-columns:minmax(0,1fr) 18px clamp(260px,var(--side-w,370px),calc(60% - 18px));grid-template-rows:minmax(0,1fr);column-gap:0;align-items:stretch}
+  main{flex:1 1 auto;width:100%;min-height:420px;padding-bottom:var(--sp3);grid-template-columns:minmax(0,1fr) 18px clamp(260px,var(--side-w,370px),calc(60% - 18px));grid-template-rows:minmax(0,1fr);column-gap:0;align-items:stretch}
   main>section{display:flex;flex-direction:column;min-height:0}
   main>section>#treeView{flex:1 1 auto;height:auto;min-height:0}
   main>aside{display:flex;flex-direction:column;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 4px 8px 2px;margin:0 -4px 0 -2px}
   #needPanel.quiet{order:1}
   main>aside.custom>#needPanel.quiet{order:0}
-  #colDiv{display:flex;position:relative;min-height:0;justify-content:center;align-items:center;cursor:col-resize;touch-action:none;border-radius:6px}
+  #colDiv{display:flex;position:relative;min-height:0;justify-content:center;align-items:center;cursor:col-resize;touch-action:none;border-radius:var(--r-s)}
 }
-.filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
-.filters button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 12px;font-size:var(--fs-s)}
-.filters button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
-.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:var(--pend-bg);color:var(--pend)}
-.pill.running{background:var(--run-bg);color:var(--run)}.pill.done,.pill.pass{background:var(--done-bg);color:var(--done)}
-.pill.failed,.pill.fail{background:var(--fail-bg);color:var(--fail)}.pill.idle{background:var(--idle-bg);color:var(--idle)}
-.pill.killed,.pill.stopped{background:var(--stop-bg);color:var(--stop)}
-.pill.na{background:transparent;border:1px dashed var(--line);color:var(--muted)}
-.chips{display:flex;flex-wrap:wrap;gap:4px;margin:7px 0}
-.chip{padding:2px 8px;border-radius:6px;font-size:var(--fs-xs);font-weight:600;background:var(--pend-bg);color:var(--pend);border:1px solid transparent}
-.chip.running{background:var(--run-bg);color:var(--run);animation:pulse 1.6s ease-in-out infinite}
-.chip.done{background:var(--done-bg);color:var(--done)}.chip.failed{background:var(--fail-bg);color:var(--fail)}
-.chip.idle{background:var(--idle-bg);color:var(--idle)}.chip.stopped{background:var(--stop-bg);color:var(--stop)}
-.chip.skipped,.chip.pending{border:1px dashed var(--line);background:transparent}
-@keyframes pulse{50%{opacity:.75}}
-.dot.running{animation:dotpulse 1.6s ease-in-out infinite}
-@keyframes dotpulse{0%,100%{box-shadow:0 0 0 0 var(--run)}50%{box-shadow:0 0 0 4px transparent}}
-@media (prefers-reduced-motion:reduce){.chip.running,.dot.running{animation:none}}
-#side .agent{display:flex;gap:6px;align-items:center;font-size:var(--fs-s);padding:2px 0;min-width:0}
-#side .agent .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toolrow{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp2) var(--sp3);margin-bottom:var(--sp2)}
+.filters{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp2) var(--sp3)}
+.seg{display:inline-flex;padding:2px;gap:2px;background:var(--panel2);border-radius:var(--r)}
+.filters button{border:0;background:none;border-radius:var(--r-s);height:24px;padding:0 10px;font-size:var(--fs-s);color:var(--muted)}
+.filters button:hover{color:var(--text)}
+.filters button.on{background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--line),0 1px 2px rgba(0,0,0,.05)}
+#laneCount{color:var(--faint);font-variant-numeric:tabular-nums}
+.row{display:flex;gap:var(--sp2);align-items:center;flex-wrap:wrap}
+
+/* status marks: a dot (or square, ring, tick) carries the colour; text stays neutral */
 .dot{width:8px;height:8px;border-radius:50%;background:var(--pend);flex:none}
-.dot.running{background:var(--run)}.dot.done{background:var(--done)}.dot.failed{background:var(--fail)}.dot.idle{background:var(--idle)}.dot.stopped{background:var(--stop)}
-.badge{font-size:10.5px;padding:0 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
-.badge.eta{color:var(--run);border-color:var(--run)}
-.muted{color:var(--muted)}.small{font-size:var(--fs-s)}
-.err{color:var(--fail);font-size:var(--fs-s);overflow-wrap:anywhere}
-.git{margin-top:6px;font-size:var(--fs-s);color:var(--muted)}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px;box-shadow:var(--shadow);margin-bottom:12px}
-/* one label style for panel headings, drawer headings, summary keys and table headings */
-.panel h2,#drawer h4,.sumry .k,.ut .hd,.ucols .k,.subh{font-size:var(--fs-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.panel h2{margin:0 0 8px}
-.subh{margin:12px 0 4px}
-.train{border-top:1px solid var(--line);padding:7px 0}
-.train:first-of-type{border-top:0}
+.dot.running{background:var(--run);animation:dotpulse 1.8s ease-in-out infinite}
+.dot.done{background:var(--done)}.dot.failed{background:var(--fail)}.dot.idle{background:var(--idle)}
+.dot.stopped,.dot.killed{background:var(--stop);border-radius:2px}
+.dot.pending,.dot.skipped{background:none;box-shadow:inset 0 0 0 1.5px var(--pend)}
+@keyframes dotpulse{0%,100%{box-shadow:0 0 0 0 var(--run-bg)}50%{box-shadow:0 0 0 3px var(--run-bg)}}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-s);color:var(--muted);white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--pend);flex:none}
+.pill.running{color:var(--run)}.pill.running::before{background:var(--run)}
+.pill.done::before,.pill.pass::before{background:var(--done)}
+.pill.failed,.pill.fail{color:var(--fail)}.pill.failed::before,.pill.fail::before{background:var(--fail)}
+.pill.idle{color:var(--idle)}.pill.idle::before{background:var(--idle)}
+.pill.killed::before,.pill.stopped::before{background:var(--stop);border-radius:2px}
+.pill.pending::before,.pill.na::before{background:none;box-shadow:inset 0 0 0 1.5px var(--pend)}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.chip{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:var(--r-s);font-size:var(--fs-xs);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--pend);flex:none}
+.chip.running{color:var(--text);border-color:var(--run)}.chip.running::before{background:var(--run);animation:pulse 1.8s ease-in-out infinite}
+.chip.done::before{background:var(--done)}
+.chip.failed{color:var(--fail);border-color:var(--fail)}.chip.failed::before{background:var(--fail)}
+.chip.idle{border-color:var(--idle)}.chip.idle::before{background:var(--idle)}
+.chip.stopped::before,.chip.killed::before{background:var(--stop);border-radius:1px}
+.chip.skipped,.chip.pending{border-style:dashed}.chip.skipped::before,.chip.pending::before{background:none;box-shadow:inset 0 0 0 1.5px var(--pend)}
+@keyframes pulse{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.chip.running::before,.dot.running{animation:none}}
+.badge{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:var(--r-s);border:1px solid var(--line);font-size:var(--fs-xs);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.badge.eta{border-color:transparent;padding:0;color:var(--muted)}
+.badge.bare{border-style:dashed}
+.git{margin-top:var(--sp1);font-size:var(--fs-s);color:var(--muted)}
+
+/* side column: flat sections with a quiet label, like the app's own side panes */
+.panel{position:relative;flex-shrink:0;display:flex;flex-direction:column;padding:10px var(--sp1) var(--sp3);border-bottom:1px solid var(--line)}
+.panel>.ph{display:flex;align-items:center;gap:2px;margin:0 0 6px;min-height:22px}
+.panel h2{flex:1;min-width:0;margin:0;font-size:var(--fs-s);font-weight:500;color:var(--muted);display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.cnt{color:var(--faint);font-weight:400;font-variant-numeric:tabular-nums}
+.cnt.hot{color:var(--fail);font-weight:600}
+.panel>.pbody{min-height:0}
+.panel.sized>.pbody{flex:1 1 auto;overflow:auto;overscroll-behavior:contain;padding:0 2px 0 0}
+.panel.sized .events,.panel.sized #wts{max-height:none;overflow:visible}
+.panel.folded>.pbody,.panel.folded>.rsz{display:none}
+.panel.folded>.ph{margin-bottom:0}
+.pbtn{flex:none;border:0;background:none;color:var(--faint);border-radius:var(--r-s);padding:0;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.pbtn:hover{background:var(--hover);color:var(--text)}
+.pbtn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.pbtn.grip{cursor:grab;touch-action:none;margin-left:-6px}
+.pbtn.grip svg{fill:currentColor;stroke:none;width:12px;height:12px}
+.pbtn[aria-disabled="true"]{opacity:.4;cursor:default}
+.pbtn[aria-disabled="true"]:hover{background:none;color:var(--faint)}
+.pbtn.fold svg{transition:transform .12s}
+.panel.folded .pbtn.fold svg{transform:rotate(-90deg)}
+@media (prefers-reduced-motion:reduce){.pbtn.fold svg{transition:none}}
+@media (hover:hover) and (pointer:fine) and (min-width:701px){
+  .pbtn.pmv,.pbtn.grip{opacity:0;transition:opacity .12s}
+  .panel:hover .pbtn.pmv,.panel:focus-within .pbtn.pmv,.panel:hover .pbtn.grip,.panel:focus-within .pbtn.grip{opacity:1}
+  .panel:hover .pbtn.pmv[aria-disabled="true"],.panel:focus-within .pbtn.pmv[aria-disabled="true"]{opacity:.4}
+}
+.rsz{position:absolute;left:12px;right:12px;bottom:-7px;height:14px;cursor:ns-resize;touch-action:none;z-index:2;display:flex;align-items:center;justify-content:center;border-radius:var(--r-s)}
+.rsz::before{content:"";width:24px;height:3px;border-radius:2px;background:var(--line2);opacity:0;transition:opacity .12s}
+.panel:hover .rsz::before{opacity:1}
+.rsz:hover::before,.rsz.on::before,.rsz:focus-visible::before{opacity:1;background:var(--accent);width:48px}
+.rsz:focus-visible{outline:2px solid var(--accent);outline-offset:0}
+@media (pointer:coarse){.rsz{height:22px;bottom:-11px}.rsz::before{opacity:1}}
+.panel.lifted{opacity:.55;outline:2px dashed var(--accent);outline-offset:-2px;border-radius:var(--r)}
+body.pdrag,body.pdrag *{cursor:grabbing!important;user-select:none}
+body.prsz,body.prsz *{cursor:ns-resize!important;user-select:none}
+body.pcol,body.pcol *{cursor:col-resize!important;user-select:none}
+#dropLine{position:fixed;left:0;top:0;height:2px;border-radius:1px;background:var(--accent);z-index:30;pointer-events:none;display:none}
+#dropLine span{position:absolute;left:10px;top:-10px;font-size:var(--fs-xs);font-weight:500;line-height:16px;background:var(--accent);color:var(--on-solid);padding:2px 8px;border-radius:var(--r-s);white-space:nowrap}
+#colDiv::before{content:"";width:1px;height:100%;background:transparent}
+#colDiv::after{content:"";position:absolute;top:50%;left:50%;width:4px;height:28px;margin:-14px 0 0 -2px;border-radius:2px;background:var(--line2)}
+#colDiv:hover::after,#colDiv.on::after,#colDiv:focus-visible::after{background:var(--accent)}
+#colDiv:hover::before,#colDiv.on::before{background:var(--line2)}
+#colDiv:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* rows inside the side panels */
+.lnk{cursor:pointer;border-radius:var(--r-s)}.lnk:hover,.need[role="button"]:hover,.train[role="button"]:hover{background:var(--hover)}
+.need{display:flex;gap:var(--sp2);align-items:flex-start;padding:4px var(--sp1);margin:0 calc(-1*var(--sp1));border-radius:var(--r-s);font-size:var(--fs-s);color:var(--text2)}
+.need .sev{flex:none;width:7px;height:7px;border-radius:50%;margin-top:6px;background:var(--pend)}
+.need .sev.high{background:var(--fail)}.need .sev.med{background:var(--idle)}.need .sev.ok{background:var(--done)}
+.need b{font-weight:600;color:var(--text);margin-right:6px}
+.need span.t{overflow-wrap:anywhere;min-width:0;flex:1}
+.need .rm{display:block;color:var(--muted);font-size:var(--fs-xs);font-family:var(--mono)}
+.need .rm .warn{color:var(--idle)}
+.need .num{flex:none;color:var(--muted);font-family:var(--mono);font-size:var(--fs-xs);margin-top:1px}
+.minibtn{border:0;background:none;color:var(--muted);font-size:var(--fs-s);padding:4px 0}
+.minibtn:hover{color:var(--text)}
+#plan .task{display:flex;gap:var(--sp2);align-items:flex-start;padding:3px var(--sp1);margin:0 calc(-1*var(--sp1));font-size:var(--fs-m);border-radius:var(--r-s);color:var(--text)}
+#plan .task:hover{background:var(--hover)}#plan .task.sel{background:var(--accent-bg)}
+#plan .task .box{flex:none;width:14px;height:14px;border-radius:50%;border:1.5px solid var(--faint);margin-top:2px;display:flex;align-items:center;justify-content:center;color:var(--done)}
+#plan .task.in_progress .box{border-color:var(--run)}
+#plan .task.in_progress .box::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--run)}
+#plan .task.completed{color:var(--muted)}
+#plan .task.completed .box{border:0}
+#plan .task.completed .box .ic{width:15px;height:15px}
+#plan .task.ended{color:var(--muted)}
+#plan .task.auto-failed .box{border-color:var(--fail);color:var(--fail)}#plan .task.auto-failed .box .ic{width:9px;height:9px;stroke-width:3.5}
+#plan .task.auto-stopped .box{border-color:var(--stop)}#plan .task.auto-stopped .box::after{content:"";width:6px;height:6px;border-radius:1px;background:var(--stop)}
+#plan .stalehint{font-size:var(--fs-s);color:var(--idle);padding:0 0 var(--sp1)}
+#plan .task span:nth-child(2){flex:1;overflow-wrap:anywhere}#plan .task .badge{flex:none;white-space:nowrap;margin-top:1px}
+#plan .taskagent{display:flex;gap:6px;align-items:center;font-size:var(--fs-s);padding:1px var(--sp1) 1px 26px;margin:0 calc(-1*var(--sp1));border-radius:var(--r-s);min-width:0;color:var(--text2)}
+#plan .taskagent .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#plan .taskagent .dot{width:6px;height:6px}
+#plan .stale{color:var(--idle);font-size:var(--fs-s);margin-top:var(--sp1)}
+#side .agent{display:flex;gap:var(--sp2);align-items:center;font-size:var(--fs-s);padding:2px 0;min-width:0;color:var(--text2)}
+#side .agent .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kv{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp2);font-size:var(--fs-s);padding:2px 0;color:var(--muted)}
+.kv b{font-weight:500;color:var(--text);font-variant-numeric:tabular-nums;text-align:right}
+.kv b.hot{color:var(--fail)}.kv b.warm{color:var(--idle)}
+.kv span.mono{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.subh{margin:10px 0 4px;font-size:var(--fs-xs);font-weight:500;color:var(--muted)}
+.top{display:grid;grid-template-columns:minmax(0,1fr) 72px 40px;align-items:center;gap:var(--sp2);font-size:var(--fs-s);padding:2px var(--sp1);margin:0 calc(-1*var(--sp1))}
+.top .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:var(--fs-xs);color:var(--text2)}
+.top .tb{height:4px;border-radius:2px;background:var(--line);overflow:hidden}.top .tb i{display:block;height:100%;background:var(--muted)}
+.top b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
+.mixrow{display:grid;grid-template-columns:64px minmax(0,1fr) 40px;align-items:center;gap:var(--sp2);font-size:var(--fs-s);color:var(--muted);padding:2px 0}
+.mixrow b{font-weight:500;color:var(--text);text-align:right;font-variant-numeric:tabular-nums}
+.mixbar{display:flex;gap:1px;height:6px;border-radius:3px;overflow:hidden;background:var(--line)}
+.mixbar i{display:block;height:100%}
+.f-opus{background:var(--m-opus)}.f-sonnet{background:var(--m-sonnet)}.f-haiku{background:var(--m-haiku)}.f-fable,.f-other{background:var(--m-other)}.f-default{background:var(--line2)}
+.legend{display:flex;flex-wrap:wrap;gap:2px var(--sp3);margin-top:6px;font-size:var(--fs-xs);color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px}
+.train{padding:6px var(--sp1);margin:0 calc(-1*var(--sp1));border-radius:var(--r-s)}
+.train+.train{border-top:1px solid var(--line)}
+.train .hd{display:flex;align-items:center;gap:var(--sp2);font-size:var(--fs-m)}
+.train .hd b{font-weight:600}
+.train .hd .sp{margin-left:auto;display:flex;gap:var(--sp2);font-size:var(--fs-s);color:var(--muted)}
+.train .ln{font-size:var(--fs-s);color:var(--muted);overflow-wrap:anywhere}
+.train .ln .row{gap:var(--sp1) var(--sp3)}
 .events{max-height:420px;overflow:auto}
 #wts{max-height:260px;overflow:auto}
-.ev{font-size:var(--fs-s);padding:2px 0;border-top:1px solid var(--line);display:flex;gap:8px}
-.ev:first-child{border-top:0}.ev time{color:var(--muted);flex:none;width:52px}.ev span{overflow-wrap:anywhere}
-.wt{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:2px 8px;font-size:var(--fs-s);align-items:center}
+.ev{display:grid;grid-template-columns:38px 6px minmax(0,1fr);gap:var(--sp2);align-items:start;font-size:var(--fs-s);padding:2px 0;color:var(--text2)}
+.ev time{color:var(--faint);font-family:var(--mono);font-size:var(--fs-xs);line-height:18px}
+.ev .dot{width:6px;height:6px;margin-top:6px}
+.ev span{overflow-wrap:anywhere}
+.wt{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:2px var(--sp3);font-size:var(--fs-xs);align-items:center;font-family:var(--mono);color:var(--text2)}
 .wt div:nth-child(3n+1){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.panel[hidden]{display:none}
-.sumry.spaced p{margin:12px 0}
-.ut{display:grid;grid-template-columns:minmax(92px,auto) minmax(0,1fr) minmax(0,1fr);column-gap:16px;row-gap:14px;margin:6px 0 2px;font-size:var(--fs-m);align-items:start}
-.ut .hd{align-self:end;line-height:1.25}
+.wt .muted{color:var(--faint)}.wt .warn{color:var(--idle)}
+.foot{margin-top:6px;font-size:var(--fs-xs);color:var(--faint)}
+.empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r);grid-column:1/-1}
+@media (max-width:1049px){main>aside{display:contents}.panel{order:1}#needPanel{order:-1}#needPanel.quiet{order:1}main>section{order:0}main>aside.custom>#needPanel{order:1}#colDiv{display:none}}
+
+/* the tree */
+#treeView{position:relative;height:calc(100vh - 150px);min-height:420px;border:1px solid var(--line);border-radius:var(--r-l);background:var(--sunk);overflow:hidden}
+#treeSvg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;user-select:none}
+#treeSvg.drag{cursor:grabbing}
+.tv-tools{position:absolute;top:var(--sp2);right:var(--sp2);display:flex;gap:2px;z-index:2;background:var(--panel);padding:2px;border-radius:var(--r);border:1px solid var(--line)}
+.tv-tools .iconbtn{height:26px;min-width:26px}
+.tv-hint{position:absolute;left:var(--sp2);bottom:var(--sp2);font-size:var(--fs-xs);color:var(--muted);z-index:2;pointer-events:none;background:var(--sunk);background:color-mix(in srgb,var(--sunk) 88%,transparent);padding:2px var(--sp2);border-radius:var(--r-s)}
+.tv-hint.gone{display:none}
+.tv-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:var(--fs-m);pointer-events:none}
+#treeView.wait .tv-tools,#treeView.wait .tv-hint{display:none}
+#treeView:not(.wait) .tv-empty{display:none}
+.tn{cursor:pointer;outline:none}
+.tn rect.box{fill:var(--panel);stroke:var(--line);stroke-width:1}
+.tn:hover rect.box{stroke:var(--line2)}
+.tn.failed rect.box{stroke:var(--fail)}.tn.idle rect.box{stroke:var(--idle)}
+.tn.lead.idle rect.box{stroke:var(--line2)}
+.tn.pending rect.box,.tn.skipped rect.box{stroke:var(--line2);stroke-dasharray:4 3;fill:transparent}
+.tn.slim rect.box,.tn.group rect.box{fill:transparent}
+.tn text{fill:var(--text);font:500 12px var(--sans);pointer-events:none}
+.tn text.t{font:600 13px var(--sans)}
+.tn text.t2{font:600 12.5px var(--sans)}
+.tn text.t3{font:500 12px var(--sans);fill:var(--text2)}
+.tn text.m{font:400 12px var(--sans);fill:var(--text2)}
+.tn text.g{font:400 11px var(--mono);fill:var(--muted)}
+.tn text.s{font:400 11.5px var(--sans);fill:var(--muted)}
+.tn text.st{font-weight:500}.tn.lead.running text.st{fill:var(--run)}
+.tn text.cnt{font:400 11.5px var(--sans);fill:var(--faint)}
+.sg circle{fill:var(--pend)}
+.sg.running circle{fill:var(--run)}.sg.running circle.halo{fill:var(--run-bg);animation:halo 1.8s ease-in-out infinite}
+.sg.idle circle{fill:var(--idle)}.sg.failed circle{fill:var(--fail)}
+.sg.done path{fill:none;stroke:var(--done);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sg rect{fill:var(--stop)}
+.sg circle.hollow{fill:none;stroke:var(--pend);stroke-width:1.4}
+@keyframes halo{50%{opacity:.3}}
+.tn .tg circle{fill:var(--panel);stroke:var(--line2);stroke-width:1}
+.tn .tg text{fill:var(--muted);font:500 12px var(--sans);text-anchor:middle}
+.tn .tg circle.hit{fill:transparent;stroke:none}
+.tn:hover .tg circle:not(.hit){stroke:var(--muted)}
+.mb rect{fill:none;stroke:var(--line2)}.mb text{fill:var(--muted);font:500 10.5px var(--sans);text-anchor:middle}
+.mb.bare rect{stroke-dasharray:3 2}
+#treeSvg.far .tn text.s,#treeSvg.far .tn text.g,#treeSvg.far .tn text.m{display:none}
+.tn.focus rect.box{stroke:var(--accent);stroke-width:2}
+.tn:focus-visible rect.box{stroke:var(--accent);stroke-width:2;stroke-dasharray:none}
+.tn.dim{opacity:.3}
+.tn.agent.loop rect.box{stroke:var(--fail);stroke-width:1.5}.tn.agent.loop text.s{fill:var(--fail)}
+@keyframes tflash{0%{stroke-width:4}100%{stroke-width:1}}
+.tn.changed rect.box{animation:tflash 2.6s ease-out}
+.lk{fill:none;stroke:var(--line2);stroke-width:1.25}
+.lk.run{stroke:var(--muted)}
+.lk.live{stroke:var(--run);stroke-dasharray:3 4;animation:flow 1.6s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-8}}
+@media (prefers-reduced-motion:reduce){.lk.live,.tn.changed rect.box,.sg.running circle.halo{animation:none}}
+
+/* the detail drawer */
+#scrim{position:fixed;inset:0;background:rgba(0,0,0,.28);display:none;z-index:20}
+#drawer{position:fixed;top:0;right:0;bottom:0;width:min(540px,100vw);background:var(--bg);z-index:21;border-left:1px solid var(--line);
+  transform:translateX(102%);visibility:hidden;transition:transform .18s,visibility 0s .18s;overflow:auto;overscroll-behavior:contain;padding:0 var(--sp5) 40px;box-shadow:var(--shadow)}
+body.open #scrim{display:block}body.open #drawer{transform:none;visibility:visible;transition:transform .18s}
+#drawer>.row:first-child{position:sticky;top:0;margin:0 calc(-1*var(--sp5)) var(--sp2);padding:10px var(--sp4) 10px var(--sp5);background:var(--bg);border-bottom:1px solid var(--line);z-index:1;flex-wrap:nowrap;min-height:48px}
+#drawer .dclose{margin-left:auto}
+#drawer h2{margin:var(--sp3) 0 2px;font-size:var(--fs-xl);font-weight:600;overflow-wrap:anywhere}
+#drawer h2+.row{margin-top:var(--sp1)}
+#drawer h4{margin:var(--sp5) 0 var(--sp2);font-size:var(--fs-s);font-weight:500;color:var(--muted)}
+#drawer p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#drawer ul{margin:4px 0;padding-left:18px}#drawer li{margin:2px 0;overflow-wrap:anywhere}
+.sumry{margin:var(--sp3) 0;border-top:1px solid var(--line)}
+.sumry p{display:grid;grid-template-columns:104px minmax(0,1fr);gap:var(--sp3);margin:0!important;padding:7px 0;border-bottom:1px solid var(--line);white-space:pre-line!important}
+.sumry .k{color:var(--muted);font-size:var(--fs-s);line-height:1.6;overflow-wrap:anywhere}
+.block{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:var(--sp2) var(--sp3);margin:6px 0}
+.block[role="button"]:hover{border-color:var(--line2)}
+.block .arow{flex-wrap:nowrap;align-items:flex-start}
+.block .arow>b{flex:1 1 0;min-width:0;overflow-wrap:anywhere;font-weight:600}
+.block .arow>.dot{margin-top:6px}
+.block .arow>.badge{flex:none;margin-top:1px}
+.block .arow>.muted{flex:0 1 auto;max-width:40%;overflow-wrap:anywhere}
+.block .muted.small{margin-top:2px}
+.cmd{display:block;font-family:var(--mono);font-size:var(--fs-xs);background:var(--panel2);border-radius:var(--r-s);padding:6px var(--sp2);overflow-wrap:anywhere;user-select:all;margin-top:6px;color:var(--text2)}
+.ut{display:grid;grid-template-columns:minmax(84px,auto) minmax(0,1fr) minmax(0,1fr);column-gap:var(--sp4);row-gap:var(--sp2);font-size:var(--fs-m);align-items:start}
+.ut .hd{align-self:end;font-size:var(--fs-xs);color:var(--muted)}
 .ut .hd.r,.ut .r{text-align:right}
-.ut .lb{color:var(--muted)}
-.ut .num{font-weight:600;font-variant-numeric:tabular-nums}
+.ut .lb{color:var(--text2)}
+.ut .num{font-weight:500;font-variant-numeric:tabular-nums}
 .ut .num.over{color:var(--idle)}
-.ut .pc{height:4px;border-radius:2px;background:var(--line);margin-top:5px;overflow:hidden}
-.ut .pc i{display:block;height:100%;background:var(--run)}
+.ut .pc{height:3px;border-radius:2px;background:var(--line);margin-top:4px;overflow:hidden}
+.ut .pc i{display:block;height:100%;background:var(--muted)}
 .ut .pc.over i{background:var(--idle)}
 .ut .pct{font-size:var(--fs-xs);color:var(--muted);text-align:right;margin-top:2px}
-.ut .pct.over{color:var(--idle);font-weight:700}
-.ucols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 14px;margin-top:8px}
+.ut .pct.over{color:var(--idle)}
+.ucols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px var(--sp3);margin-top:var(--sp2)}
 .ucols .c{display:flex;flex-direction:column;min-width:0}
-.ucols .v{font-size:var(--fs-m);font-weight:600;font-variant-numeric:tabular-nums}
+.ucols .k{font-size:var(--fs-xs);color:var(--muted)}
+.ucols .v{font-size:var(--fs-m);font-weight:500;font-variant-numeric:tabular-nums}
 .ucols .v.over{color:var(--idle)}
-.ucols .t{font-size:var(--fs-xs);color:var(--muted)}
+.ucols .t{font-size:var(--fs-xs);color:var(--faint)}
+
+/* touch and narrow screens */
+@media (pointer:coarse),(max-width:700px){
+  button,.iconbtn,.filters button,.minibtn,.projsel{min-height:44px;min-width:44px}
+  #plan .task.task{min-height:44px;align-items:flex-start;padding-top:12px;padding-bottom:12px}
+  #plan .taskagent.taskagent{padding-top:10px;padding-bottom:10px;min-height:44px;align-items:center}
+  .kv.lnk,.top.lnk{min-height:44px;align-items:center}
+  .need{min-height:44px;padding-top:11px;padding-bottom:11px}
+  .tv-tools .iconbtn{min-width:48px}
+}
+@media (max-width:700px){
+  .tv-tools.tv-tools{top:auto;bottom:var(--sp2);height:auto;align-items:center}.tv-hint{display:none}
+  .projsel{flex:1;min-width:0;max-width:none}
+  .rsz{display:none}
+}
 @media (max-width:600px){
+  #treeView{height:62vh;min-height:360px}
+  header{padding:var(--sp2) var(--sp4);gap:6px var(--sp3);position:static}
+  .hid{flex:1 1 100%}
+  .vsep{display:none}
+  .bars{margin-left:0;flex:1 1 100%}
+  .bar{grid-template-columns:auto 40px auto auto}
+  .sumry p{grid-template-columns:1fr;gap:2px}
   .ut{grid-template-columns:84px minmax(0,1fr) minmax(0,1fr);column-gap:10px}
   .ucols{grid-template-columns:1fr;gap:4px}
   .ucols .c{flex-direction:row;justify-content:space-between;align-items:baseline;gap:8px}
   .ucols .k{flex:1}
   .ucols .t{order:3;min-width:84px;text-align:right}
-}
-.projsel{font:inherit;font-size:var(--fs-s);color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 8px;max-width:220px;text-overflow:ellipsis}
-.projsel[hidden]{display:none}
-.age.stale{color:var(--idle);font-weight:700}
-.tn .tg circle.hit{fill:transparent;stroke:none}
-@media (pointer:coarse),(max-width:700px){
-  button,.iconbtn,.filters button,.minibtn,.projsel{min-height:44px;min-width:44px;padding-top:6px;padding-bottom:6px}
-  #plan .task.task{min-height:44px;align-items:flex-start;padding-top:12px;padding-bottom:12px}
-  #plan .taskagent.taskagent{padding-top:10px;padding-bottom:10px;min-height:44px;align-items:center}
-  .need,.kv.lnk{min-height:44px;align-items:center}
-  .tv-tools .iconbtn{min-width:48px}
-}
-@media (max-width:700px){
-  .tv-tools.tv-tools{top:auto;bottom:8px;height:auto;align-items:center}.tv-hint{display:none}
-  .toolrow .filters{flex:1 1 100%}
-  .tools{flex:1 1 100%;min-width:0;margin-left:0;justify-content:flex-end}
-  .projsel{flex:1;min-width:0;max-width:none}
-}
-#treeView{position:relative;height:calc(100vh - 150px);min-height:420px;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
-#treeView[hidden]{display:none}
-#treeSvg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;user-select:none}
-#treeSvg.drag{cursor:grabbing}
-.tv-tools{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:2;background:var(--panel);padding:4px;border-radius:10px;box-shadow:var(--shadow)}
-.tv-hint{position:absolute;left:10px;bottom:8px;font-size:var(--fs-xs);color:var(--muted);z-index:2;pointer-events:none;background:var(--panel);background:color-mix(in srgb,var(--panel) 88%,transparent);padding:2px 8px;border-radius:6px}
-.tv-hint.gone{display:none}
-.tv-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:var(--fs-m);pointer-events:none}
-#treeView.wait .tv-tools,#treeView.wait .tv-hint{display:none}
-#treeView:not(.wait) .tv-empty{display:none}
-.tn rect.box{fill:var(--panel2);stroke:var(--line);stroke-width:1.5;filter:drop-shadow(0 3px 5px rgba(0,0,0,.30))}
-.tn .stripe{fill:var(--pend)}
-.tn.running .stripe{fill:var(--run)}.tn.done .stripe{fill:var(--done)}.tn.failed .stripe{fill:var(--fail)}.tn.idle .stripe{fill:var(--idle)}.tn.killed .stripe,.tn.stopped .stripe{fill:var(--stop)}
-.tn{cursor:pointer;outline:none}.tn text{fill:var(--text);font:600 12px system-ui,-apple-system,"Segoe UI",sans-serif;pointer-events:none}
-.tn text.t{font:700 15px system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.01em}
-.tn text.t2{font:700 13px system-ui,-apple-system,"Segoe UI",sans-serif}
-.tn text.t3{font:600 12px system-ui,sans-serif}
-.tn text.m{font:500 12px system-ui,-apple-system,"Segoe UI",sans-serif}
-.tn text.g{font:11px ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;fill:var(--muted);font-weight:400}
-.tn text.s{font-weight:400;font-size:12px;fill:var(--muted)}
-.tn text.st{font-weight:600;fill:var(--muted)}.tn.lead.running text.st{fill:var(--run)}
-.sp rect{fill:var(--pend-bg);stroke:none}.sp text{font:700 10.5px system-ui,sans-serif;fill:var(--pend);text-anchor:middle;letter-spacing:.05em}
-.sp.sm text{font-size:9.5px}
-.tn.slim rect.box,.tn.group rect.box{filter:none}
-.sp.running rect{fill:var(--run)}.sp.failed rect{fill:var(--fail)}
-.sp.running text,.sp.failed text{fill:var(--on-solid)}
-.sp.done rect{fill:var(--done-bg)}.sp.done text{fill:var(--done)}
-.sp.idle rect{fill:var(--idle-bg)}.sp.idle text{fill:var(--idle)}
-.sp.killed rect,.sp.stopped rect{fill:var(--stop-bg)}.sp.killed text,.sp.stopped text{fill:var(--stop)}
-#treeSvg.far .tn text.s,#treeSvg.far .tn text.g,#treeSvg.far .tn text.m{display:none}
-.tn.running rect.box{fill:var(--run-bg);stroke:var(--run)}.tn.done rect.box{stroke:var(--done)}.tn.failed rect.box{fill:var(--fail-bg);stroke:var(--fail)}
-.tn.idle rect.box{fill:var(--idle-bg);stroke:var(--idle)}.tn.killed rect.box,.tn.stopped rect.box{fill:var(--stop-bg);stroke:var(--stop)}
-.tn.pending rect.box,.tn.skipped rect.box{stroke-dasharray:4 3;fill:transparent}
-.tn.lead rect.box{stroke-width:2.5;stroke:var(--run)}.tn.lead text.t{font-size:15px}
-.tn .tg circle{fill:var(--panel);stroke:var(--muted);stroke-width:1.5}.tn .tg text{fill:var(--muted);font-size:13px;text-anchor:middle}
-.mb rect{fill:var(--m-other-bg);stroke:var(--m-other)}.mb text{fill:var(--m-other);font:700 11px system-ui,sans-serif;text-anchor:middle}
-.mb.m-opus rect{fill:var(--m-opus-bg);stroke:var(--m-opus)}.mb.m-opus text{fill:var(--m-opus)}
-.mb.m-sonnet rect{fill:var(--m-sonnet-bg);stroke:var(--m-sonnet)}.mb.m-sonnet text{fill:var(--m-sonnet)}
-.mb.m-haiku rect{fill:var(--m-haiku-bg);stroke:var(--m-haiku)}.mb.m-haiku text{fill:var(--m-haiku)}
-.mb.bare rect{stroke-dasharray:3 2}
-.tn.focus rect.box{stroke-width:3.5;stroke:var(--run);filter:drop-shadow(0 0 6px var(--run))}
-.tn:focus-visible rect.box{stroke:var(--run);stroke-width:3;stroke-dasharray:none}
-.tn.dim{opacity:.28}
-.tn.agent.loop rect.box{stroke:var(--fail);stroke-width:2.5}.tn.agent.loop text.s{fill:var(--fail)}
-@keyframes tflash{0%{stroke-width:7}100%{stroke-width:1.5}}
-.tn.changed rect.box{animation:tflash 2.6s ease-out}
-@media (prefers-reduced-motion:reduce){.tn.changed rect.box{animation:none}}
-.lk{fill:none;stroke:var(--line);stroke-width:1.6}
-.lk.run{stroke:var(--run)}
-.lk.live{stroke:var(--run);stroke-dasharray:6 5;animation:flow 2.4s linear infinite}
-@keyframes flow{to{stroke-dashoffset:-11}}
-@media (prefers-reduced-motion:reduce){.lk.live{animation:none}}
-.need{display:flex;gap:8px;align-items:flex-start;padding:4px 0;border-top:1px solid var(--line);font-size:var(--fs-s)}
-.need:first-child{border-top:0}
-.need .sev{flex:none;width:8px;height:8px;border-radius:50%;margin-top:5px;background:var(--pend)}
-.need .sev.high{background:var(--fail)}.need .sev.med{background:var(--idle)}.need .sev.ok{background:var(--done)}
-.need b{display:block;font-size:var(--fs-s)}.need span.t{overflow-wrap:anywhere;min-width:0}
-.sumry{border-left:4px solid var(--run);background:var(--panel2);border-radius:8px;padding:10px 12px;margin:12px 0}
-.sumry.done{border-left-color:var(--done)}.sumry.failed{border-left-color:var(--fail)}.sumry.idle{border-left-color:var(--idle)}.sumry.killed{border-left-color:var(--stop)}
-.sumry p{margin:6px 0;white-space:pre-line}.sumry .k{display:block;margin-bottom:1px}
-.kv{display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-s);padding:2px 0}
-.kv b{font-variant-numeric:tabular-nums}
-.kv.fc{flex-direction:column;align-items:flex-start;gap:0}
-.kv span.mono{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.kv b.hot{color:var(--fail)}.kv b.warm{color:var(--idle)}.work{border-top:1px solid var(--panel2);margin-top:4px;padding-top:6px}
-.mixbar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--panel2);margin:4px 0}
-.mixbar i{display:block;height:100%}
-.f-opus{background:var(--m-opus)}.f-sonnet{background:var(--m-sonnet)}.f-haiku{background:var(--m-haiku)}.f-fable,.f-other{background:var(--m-other)}.f-default{background:var(--pend)}
-.badge.m-opus{color:var(--m-opus);background:var(--m-opus-bg);border-color:var(--m-opus);font-weight:700}
-.badge.m-sonnet{color:var(--m-sonnet);background:var(--m-sonnet-bg);border-color:var(--m-sonnet);font-weight:700}
-.badge.m-haiku{color:var(--m-haiku);background:var(--m-haiku-bg);border-color:var(--m-haiku);font-weight:700}
-.badge.m-fable,.badge.m-other{color:var(--m-other);background:var(--m-other-bg);font-weight:700}
-.badge.bare{border-style:dashed}
-.legend{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:var(--fs-xs);color:var(--muted)}
-.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
-.lnk{cursor:pointer}.lnk:hover{background:var(--panel2)}
-.minibtn{border:0;background:none;color:var(--run);font-size:var(--fs-s);padding:4px 0}
-#plan .task{display:flex;gap:8px;align-items:flex-start;padding:3px 0;font-size:var(--fs-m);border-radius:6px}
-#plan .task:hover{background:var(--panel2)}#plan .task.sel{background:var(--run-bg)}
-#plan .task .box{flex:none;width:16px;height:16px;border-radius:50%;border:2px solid var(--line);margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1}
-#plan .task.completed{color:var(--muted);text-decoration:line-through}#plan .task.completed .box{background:var(--done);border-color:var(--done);color:var(--bg)}
-#plan .task.ended{color:var(--muted)}#plan .task.ended .box{border-color:var(--stop);color:var(--stop)}
-#plan .stalehint{font-size:var(--fs-s);color:var(--idle);font-weight:700;padding:2px 0 4px}
-#plan .task.in_progress{font-weight:600}#plan .task.in_progress .box{border-color:var(--run);background:var(--run-bg)}
-#plan .task span:nth-child(2){flex:1;overflow-wrap:anywhere}#plan .task .badge{flex:none;white-space:nowrap}
-#plan .taskagent{display:flex;gap:6px;align-items:center;font-size:var(--fs-s);padding:1px 4px 1px 24px;border-radius:4px;min-width:0}
-#plan .taskagent .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px;grid-column:1/-1}
-#scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:20}
-#drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--panel);z-index:21;border-left:1px solid var(--line);
-  transform:translateX(102%);visibility:hidden;transition:transform .18s,visibility 0s .18s;overflow:auto;overscroll-behavior:contain;padding:14px 16px 40px;box-shadow:-8px 0 24px rgba(0,0,0,.18)}
-body.open #scrim{display:block}body.open #drawer{transform:none;visibility:visible;transition:transform .18s}
-#drawer>.row:first-child{position:sticky;top:-14px;margin:-14px -16px 4px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);z-index:1;flex-wrap:nowrap}
-#drawer .dclose{margin-left:auto}
-#drawer h2{margin:0;font-size:var(--fs-xl);overflow-wrap:anywhere}
-#drawer h4{margin:16px 0 6px}
-#drawer p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}
-#drawer ul{margin:4px 0;padding-left:18px}#drawer li{margin:2px 0;overflow-wrap:anywhere}
-.block{background:var(--panel2);border-radius:8px;padding:8px 10px;margin:6px 0}
-.block .arow{flex-wrap:nowrap;align-items:flex-start}
-.block .arow>b{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
-.block .arow>.dot{margin-top:6px}
-.block .arow>.badge{flex:none;margin-top:1px}
-.block .arow>.muted{flex:0 1 auto;max-width:40%;overflow-wrap:anywhere}
-.cmd{display:block;background:var(--panel2);border-radius:6px;padding:6px 8px;overflow-wrap:anywhere;user-select:all;margin-top:4px}
-@media (max-width:1049px){main>aside{display:contents}.panel{order:1}#needPanel{order:-1}#needPanel.quiet{order:1}main>section{order:0}main>aside.custom>#needPanel{order:1}}
-/* side column layout: panel headings with move, fold and height controls, the height handle, the column divider */
-.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-@media (max-width:1049px){#colDiv{display:none}}
-#colDiv::before{content:"";width:2px;height:100%;border-radius:1px;background:transparent}
-#colDiv::after{content:"";position:absolute;top:50%;left:50%;width:4px;height:28px;margin:-14px 0 0 -2px;border-radius:3px;background:var(--muted)}
-#colDiv:hover::before,#colDiv.on::before,#colDiv:focus-visible::before{background:var(--run)}
-#colDiv:hover::after,#colDiv.on::after,#colDiv:focus-visible::after{opacity:1;background:var(--run)}
-#colDiv:focus-visible{outline:2px solid var(--run);outline-offset:-2px}
-.panel{position:relative;flex-shrink:0;display:flex;flex-direction:column}
-.panel>.ph{display:flex;align-items:center;gap:2px;margin:-4px -6px 6px -6px;min-height:26px}
-.panel>.ph h2{flex:1;min-width:0;margin:0;padding:0 2px}
-.panel>.pbody{min-height:0}
-.panel.sized>.pbody{flex:1 1 auto;overflow:auto;overscroll-behavior:contain;padding:0 2px 0 0}
-.panel.sized .events,.panel.sized #wts{max-height:none;overflow:visible}
-.panel.folded>.pbody,.panel.folded>.rsz{display:none}
-.panel.folded>.ph{margin-bottom:-4px}
-.pbtn{flex:none;border:0;background:none;color:var(--muted);border-radius:6px;padding:0;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center}
-.pbtn:hover{background:var(--panel2);color:var(--text)}
-.pbtn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
-.pbtn.grip{cursor:grab;touch-action:none}
-.pbtn.grip svg{fill:currentColor;stroke:none}
-.pbtn[aria-disabled="true"]{opacity:.4;cursor:default}
-.pbtn[aria-disabled="true"]:hover{background:none;color:var(--muted)}
-.pbtn.fold svg{transition:transform .12s}
-.panel.folded .pbtn.fold svg{transform:rotate(-90deg)}
-.pbtn[hidden]{display:none}
-@media (prefers-reduced-motion:reduce){.pbtn.fold svg{transition:none}}
-@media (hover:hover) and (pointer:fine) and (min-width:701px){
-  .pbtn.pmv{opacity:0;transition:opacity .12s}
-  .panel:hover .pbtn.pmv,.panel:focus-within .pbtn.pmv{opacity:1}
-  .panel:hover .pbtn.pmv[aria-disabled="true"],.panel:focus-within .pbtn.pmv[aria-disabled="true"]{opacity:.4}
-}
-.rsz{position:absolute;left:12px;right:12px;bottom:-7px;height:14px;cursor:ns-resize;touch-action:none;z-index:2;display:flex;align-items:center;justify-content:center;border-radius:6px}
-.rsz::before{content:"";width:24px;height:3px;border-radius:2px;background:var(--muted)}
-.rsz:hover::before,.rsz.on::before,.rsz:focus-visible::before{opacity:1;background:var(--run);width:48px}
-.rsz:focus-visible{outline:2px solid var(--run);outline-offset:0}
-@media (pointer:coarse){.rsz{height:22px;bottom:-11px}}
-.panel.lifted{opacity:.55;outline:2px dashed var(--run);outline-offset:-2px}
-body.pdrag,body.pdrag *{cursor:grabbing!important;user-select:none}
-body.prsz,body.prsz *{cursor:ns-resize!important;user-select:none}
-body.pcol,body.pcol *{cursor:col-resize!important;user-select:none}
-#dropLine{position:fixed;left:0;top:0;height:3px;border-radius:2px;background:var(--run);box-shadow:0 0 0 2px var(--panel);z-index:30;pointer-events:none;display:none}
-#dropLine span{position:absolute;left:10px;top:-9px;font-size:var(--fs-xs);font-weight:700;line-height:15px;background:var(--run);color:var(--on-solid);padding:3px 9px;border-radius:999px;white-space:nowrap;box-shadow:var(--shadow)}
-@media (max-width:700px){
-  .rsz{display:none}
-  .panel>.ph{margin:-6px -8px 4px -8px}
-}
-@media (max-width:600px){
-  #treeView{height:62vh;min-height:360px}
-  header{padding:6px 16px;gap:5px 12px;position:static}
-  .hid{flex:1 1 100%}
-  .stats{gap:4px}.stat{padding:1px 7px;font-size:var(--fs-xs)}.stat b{font-size:var(--fs-s)}
-  .stat.zero{display:none}
-  .bars{flex:1 1 100%;gap:2px 14px}.bar{flex:1 1 0;min-width:0}
-  .bar .lbl{flex-wrap:wrap}.bar .lbl .rs{margin-left:0;flex-basis:100%;order:3}
-  .bars .sub{text-align:left;order:3;flex-basis:100%}
+  #drawer{padding:0 var(--sp4) 40px}
+  #drawer>.row:first-child{margin:0 calc(-1*var(--sp4)) var(--sp2);padding:10px var(--sp4)}
 }
 </style>
 </head>
@@ -333,32 +392,31 @@ body.pcol,body.pcol *{cursor:col-resize!important;user-select:none}
 <header>
   <div class="hid"><h1>Agent control room</h1><div class="sub" id="meta">loading…</div></div>
   <div class="stats" id="stats"></div>
-  <div class="bars" id="bars"></div>
+  <div class="hright">
+    <div class="tools"><select id="projSel" class="projsel" hidden aria-label="Switch project" title="Other projects with a running dashboard"></select><button class="iconbtn ico" id="layoutReset" aria-label="Reset layout" title="Reset layout: the side panels' default order, heights, folds and column width"></button><button class="iconbtn ico" id="themeBtn" aria-label="Theme: auto" title="Theme: auto"></button></div>
+  </div>
 </header>
 <div id="banners"></div>
 <main>
   <section>
-    <div class="toolrow">
-      <div class="filters" id="filters"></div>
-      <div class="tools"><select id="projSel" class="projsel" hidden aria-label="Switch project" title="Other projects with a running dashboard"></select><button class="iconbtn" id="layoutReset" title="Put the side panels back in their default order, heights, folds and column width">Reset layout</button><button class="iconbtn" id="themeBtn" title="Switch theme">Theme: auto</button></div>
-    </div>
+    <div class="toolrow"><div class="filters" id="filters"></div><div class="bars" id="bars"></div></div>
     <div id="treeView" class="wait">
       <div class="tv-empty">Waiting for the first snapshot…</div>
-      <div class="tv-tools"><button class="iconbtn" id="tvIn" title="Zoom in" aria-label="Zoom in">+</button><button class="iconbtn" id="tvOut" title="Zoom out" aria-label="Zoom out">−</button><button class="iconbtn" id="tvFit" title="Zoom out to see the whole tree">Fit</button><button class="iconbtn" id="tvClear" hidden>Clear highlight</button></div>
-      <div class="tv-hint" id="tvHint">Lead → task steps → the runs working on each step (matched by name) → stages → agents. Runs no step names sit under "Other work". ± folds only what is under that box · drag to move · scroll to zoom · click a box for details</div>
+      <div class="tv-tools"><button class="iconbtn ico" id="tvIn" title="Zoom in" aria-label="Zoom in"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button><button class="iconbtn ico" id="tvOut" title="Zoom out" aria-label="Zoom out"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button><button class="iconbtn ico" id="tvFit" title="Fit: zoom out to see the whole tree" aria-label="Fit the whole tree"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button><button class="iconbtn" id="tvClear" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>Clear highlight</button></div>
+      <div class="tv-hint" id="tvHint" title="Lead, then task steps, the runs each step names, their stages and agents. Runs no step names sit under &quot;Other work&quot;.">Drag to pan · scroll to zoom · click a box for details · ± folds</div>
       <svg id="treeSvg" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Agent tree. Tab to a box, Enter opens it, plus and minus fold it."><g id="vp"><g id="tvLinks" aria-hidden="true"></g><g id="tvNodes"></g></g></svg>
     </div>
   </section>
-  <div id="colDiv" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Side column width" title="Drag to make the side column wider or narrower · arrow keys · double-click for the default width"></div>
+  <div id="colDiv" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Side column width" title="Drag to resize · arrow keys · double-click for the default width"></div>
   <aside id="sideCol">
-    <div class="panel" id="needPanel" hidden><h2>Needs you</h2><div id="need"></div></div>
-    <div class="panel" id="planPanel" hidden><h2>Task list</h2><div id="plan"></div></div>
+    <div class="panel" id="needPanel" hidden><h2>Needs you<span class="cnt" id="needCnt"></span></h2><div id="need"></div></div>
+    <div class="panel" id="planPanel" hidden><h2>Task list<span class="cnt" id="planCnt"></span></h2><div id="plan"></div></div>
     <div class="panel" id="burnPanel"><h2>Burn rate</h2><div id="burn"></div></div>
-    <div class="panel" id="readyPanel" hidden><h2>Ready to merge</h2><div id="ready"></div></div>
+    <div class="panel" id="readyPanel" hidden><h2>Ready to merge<span class="cnt" id="readyCnt"></span></h2><div id="ready"></div></div>
     <div class="panel" id="trainPanel"><h2>Merge train</h2><div id="trains"></div></div>
-    <div class="panel" id="sidePanel" hidden><h2>Side agents</h2><div id="side"></div></div>
+    <div class="panel" id="sidePanel" hidden><h2 title="Subagents the lead started directly, outside a workflow">Side agents<span class="cnt" id="sideCnt"></span></h2><div id="side"></div></div>
     <div class="panel" id="mixPanel"><h2>Model mix</h2><div id="mix"></div></div>
-    <div class="panel" id="wtsPanel"><h2>Worktrees</h2><div id="wts"></div></div>
+    <div class="panel" id="wtsPanel"><h2>Worktrees<span class="cnt" id="wtsCnt"></span></h2><div id="wts"></div></div>
     <div class="panel" id="eventsPanel"><h2>Recent events</h2><div class="events" id="events"></div></div>
   </aside>
 </main>
@@ -381,6 +439,28 @@ function h(tag, cls, text, kids) {
   return e;
 }
 function clear(e) { while (e.firstChild) e.removeChild(e.firstChild); return e; }
+// line icons on a 24-unit grid: a string is a path, ["c", x, y, r] a circle, ["r", x, y, w, h, rx] a rectangle, ["f", d] a filled path
+var IC = {
+  check: [["c", 12, 12, 9], "m8.5 12.2 2.4 2.4 4.6-5"], clock: [["c", 12, 12, 9], "M12 7v5l3 2"], x: ["M18 6 6 18M6 6l12 12"], back: ["m15 18-6-6 6-6"],
+  alert: ["M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z", "M12 9v4M12 17h.01"],
+  file: ["M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z", "M14 3v5h5"], slots: [["r", 3, 4, 18, 12, 2], "M8 20h8M12 16v4"],
+  reset: ["M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5"], cycle: ["M21 12a9 9 0 1 1-3-6.7L21 8", "M21 3v5h-5"],
+  sun: [["c", 12, 12, 4], "M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"],
+  moon: ["M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"], auto: [["c", 12, 12, 9], ["f", "M12 3a9 9 0 0 1 0 18Z"]]
+};
+function icon(name) {
+  var NS = "http://www.w3.org/2000/svg", s = document.createElementNS(NS, "svg");
+  s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "ic"); s.setAttribute("aria-hidden", "true"); s.setAttribute("focusable", "false");
+  (IC[name] || []).forEach(function (p) {
+    var e;
+    if (typeof p === "string") { e = document.createElementNS(NS, "path"); e.setAttribute("d", p); }
+    else if (p[0] === "c") { e = document.createElementNS(NS, "circle"); e.setAttribute("cx", p[1]); e.setAttribute("cy", p[2]); e.setAttribute("r", p[3]); }
+    else if (p[0] === "r") { e = document.createElementNS(NS, "rect"); ["x", "y", "width", "height", "rx"].forEach(function (k, i) { e.setAttribute(k, p[i + 1]); }); }
+    else { e = document.createElementNS(NS, "path"); e.setAttribute("d", p[1]); e.setAttribute("class", "f"); }
+    s.appendChild(e);
+  });
+  return s;
+}
 function ago(ms) {
   if (!ms) return "";
   var s = Math.max(0, Math.round((Date.now() - ms) / 1000));
@@ -410,7 +490,7 @@ function etaText(r) {
   return "ETA ~" + dur(e.remainingMs);
 }
 // the ETA line of a tree box: a live run with no estimate says so instead of showing nothing
-function boxEta(r) { return etaText(r) || (r && live(r.state) ? "no ETA yet (first run of this kind)" : ""); }
+function boxEta(r) { return etaText(r) || (r && live(r.state) ? "no ETA yet" : ""); }
 function famOf(m) {
   m = (m || "").toLowerCase();
   var f = ["opus", "sonnet", "haiku", "fable"].filter(function (x) { return m.indexOf(x) >= 0; })[0];
@@ -431,7 +511,7 @@ function modelBadge(m) {
   b.title = bareModel(m) ? "The record names only the model family, not a version" : String(m || "");
   return b;
 }
-function pill(state) { return h("span", "pill " + state, state); }
+function pill(state) { return h("span", "pill " + state, state === "killed" ? "stopped" : state); }
 // makes a row work like a button: focusable, Enter or Space runs it, and a key that survives redraws
 function clickable(el, fn, key, label) {
   el.tabIndex = 0; el.setAttribute("role", "button");
@@ -493,54 +573,67 @@ function drawHeader() {
   var trainsLive = runs.filter(function (r) { return r.isTrain && live(r.state); }).length;
   var age = Math.round((Date.now() - data.generated) / 1000);
   setMeta();
+  // lane counts as dot + number; a zero hides (except running), problems come before done
   var st = clear($("stats"));
-  [["running", "running", c.running + trainsLive], ["idle", "idle", c.idle], ["done", "done", c.done], ["failed", "failed", c.failed], ["killed", "stopped", c.killed]]
-    .forEach(function (x) { st.appendChild(h("span", "stat " + (x[2] ? x[0] : x[0] === "running" ? "" : "zero"), "", [h("b", "", x[2]), document.createTextNode(x[1])])); });
-  if (data.handoff) {
-    var hage = Date.now() - data.handoff.updated, stale = hage > 3 * 3600e3 && runs.some(function (r) { return live(r.state); });
-    var hs = h("span", "stat " + (stale ? "idle" : ""), "notes " + dur(hage) + " old");
-    hs.title = data.handoff.name + " was last changed " + ago(data.handoff.updated);
-    st.appendChild(hs);
-  }
+  [["running", "running", c.running + trainsLive], ["idle", "idle", c.idle], ["failed", "failed", c.failed], ["done", "done", c.done], ["killed", "stopped", c.killed]]
+    .forEach(function (x) { st.appendChild(h("span", "stat" + (x[2] || x[0] === "running" ? "" : " zero"), "", [h("span", "dot " + x[0]), h("b", "", x[2]), document.createTextNode(x[1])])); });
+  var aux = [];
   var etas = runs.filter(function (r) { return live(r.state) && r.eta && r.eta.known; });
   if (etas.length) {
     var left = Math.max.apply(null, etas.map(function (r) { return r.eta.remainingMs; }));
-    var st2 = h("span", "stat", "", [h("b", "", left > 0 ? "~" + dur(left) : "late"), document.createTextNode("all live done")]);
-    st2.title = "Estimate from how long finished agents of the same workflow and phase took (" + etas.length + " live runs with history)";
-    st.appendChild(st2);
+    var st2 = h("span", "stat", "", [icon("clock"), h("b", "", left > 0 ? "~" + dur(left) : "late"), document.createTextNode(left > 0 ? "left" : "")]);
+    st2.title = "All live runs done in about " + (left > 0 ? dur(left) : "no time: they are past their usual time") + ". Estimate from how long finished agents of the same workflow and phase took (" + etas.length + " live runs with history).";
+    aux.push(st2);
+  }
+  if (data.handoff) {
+    var hage = Date.now() - data.handoff.updated, stale = hage > 3 * 3600e3 && runs.some(function (r) { return live(r.state); });
+    var hs = h("span", "stat" + (stale ? " warn" : ""), "", [icon("file"), document.createTextNode("notes " + dur(hage).replace(/ 00m$/, ""))]);
+    hs.title = data.handoff.name + " was last changed " + ago(data.handoff.updated) + (stale ? ", while agents are working" : "");
+    aux.push(hs);
   }
   if (data.studio) {
     var over = data.studio.count !== null && data.studio.count >= data.studio.limit;
-    st.appendChild(h("span", "stat " + (over ? "failed" : ""), "", [h("b", "", data.studio.count === null ? "?" : data.studio.count + "/" + data.studio.limit), document.createTextNode(data.studio.label || "slots")]));
+    var ss = h("span", "stat" + (over ? " bad" : ""), "", [icon("slots"), h("b", "", data.studio.count === null ? "?" : data.studio.count + "/" + data.studio.limit), document.createTextNode(data.studio.label || "slots")]);
+    ss.title = (data.studio.label || "Slots") + " in use, of the limit" + (data.studio.count === null ? " (the count is unknown: no process name was given)" : "");
+    aux.push(ss);
   }
+  if (aux.length) { st.appendChild(h("span", "vsep")); aux.forEach(function (x) { st.appendChild(x); }); }
   var bars = clear($("bars"));
   var u = data.usage;
   if (u && !u.error) {
     (u.windows || []).map(effWindow).filter(function (b) { return b.percent !== null && b.percent !== undefined && (b.percent > 0 || /5|hour|all/i.test(b.label)); }).forEach(function (b) {
       var cls = b.percent >= 85 ? " hot" : b.percent >= 75 ? " warn" : "";
-      var used = Math.round(b.percent) + "% used" + (b.resetSince ? " (reset)" : ""), rs = resetText(b.resets);
+      var rs = resetText(b.resets), t = Date.parse(b.resets);
       var src = b.at ? (b.resetSince ? "reset since the last reading (" + ago(b.at) + ")" : (b.from === "app" ? "from the app, " : "written by the lead ") + ago(b.at)) : "";
-      // one label line: name, percent used, reset time; the source and the percent left are in the tooltip
-      var bar = h("div", "bar" + cls, "", [
-        h("div", "lbl", "", [h("span", "", b.label), h("span", "pc", used), rs ? h("span", "rs", rs) : null]),
-        h("div", "track", "", [(function () { var f = h("div", "fill"); f.style.width = b.percent + "%"; return f; })()])]);
-      bar.title = b.label + ": " + Math.round(b.percent) + "% used, " + Math.round(100 - b.percent) + "% left" + (rs ? "\n" + rs : "") + (src ? "\n" + src : "");
+      // one compact meter: short name, track, percent used, time to the reset; the rest is in the tooltip
+      var fill = h("div", "fill"); fill.style.width = Math.min(100, b.percent) + "%";
+      var bar = h("div", "bar" + cls, "", [h("span", "", winName(b.label)), h("div", "track", "", [fill]), h("span", "pc", Math.round(b.percent) + "%"),
+        isNaN(t) ? null : h("span", "rs", "", [icon("cycle"), document.createTextNode(dur(Math.max(0, t - Date.now())))])]);
+      bar.title = b.label + ": " + Math.round(b.percent) + "% used, " + Math.round(100 - b.percent) + "% left" + (b.resetSince ? " (reset)" : "") + (rs ? "\n" + rs : "") + (src ? "\n" + src : "");
       bars.appendChild(bar);
     });
     // the app's log only matters when the lead's own reading is old too: with a fresh reading its silence is not news
     var notes = [];
     if (u.appSilent && u.updated && Date.now() - u.updated > 1800e3) notes.push("the app has not logged usage for " + dur(u.appSilent * 60000) + ", and the last reading is " + ago(u.updated).replace(" ago", " old"));
     if (u.updated && Date.now() - u.updated > 3600e3) notes.push("usage numbers are " + ago(u.updated).replace(" ago", " old") + " (the app's usage log and the lead's file are both stale)");
-    if (notes.length) { var nt = h("div", "sub", notes.join(" · ")); nt.title = notes.join("\n"); bars.appendChild(nt); }
+    if (notes.length) { var nt = h("div", "sub", "", [icon("alert"), document.createTextNode(ago(u.updated).replace(" ago", " old"))]); nt.title = notes.join("\n"); bars.appendChild(nt); }
   } else {
-    var nu = h("div", "sub", u && u.error ? u.error : "No usage numbers yet.");
-    if (!(u && u.error)) nu.title = "The lead writes them to dashboard-usage.json";
+    var nu = h("div", "sub none", u && u.error ? u.error : "No usage data");
+    if (!(u && u.error)) nu.title = "The lead writes it to dashboard-usage.json";
     bars.appendChild(nu);
   }
   var bn = clear($("banners"));
-  if (!PHONE && age > 120) bn.appendChild(h("div", "banner", "Data is " + age + "s old: the collector may have stopped (run.py)."));
-  (data.problems || []).forEach(function (p) { bn.appendChild(h("div", "banner info", p)); });
-  if (data.git && !data.git.available) bn.appendChild(h("div", "banner info", "Not a git repository: branches and worktrees are hidden."));
+  function banner(cls, text) { bn.appendChild(h("div", cls, "", [icon(cls === "banner" ? "alert" : "info"), document.createTextNode(text)])); }
+  if (!PHONE && age > 120) banner("banner", "Data is " + age + "s old: the collector may have stopped (run.py).");
+  (data.problems || []).forEach(function (p) { banner("banner info", p); });
+  if (data.git && !data.git.available) banner("banner info", "Not a git repository: branches and worktrees are hidden.");
+}
+// "5-hour limit" -> "5h", "Weekly · all models" -> "Week"; the full label stays in the tooltip
+function winName(l) {
+  var s = String(l || "");
+  if (/5-hour|5 hour|five|session/i.test(s)) return "5h";
+  if (/weekly/i.test(s)) return "Week" + (/all/i.test(s) || !/·/.test(s) ? "" : " " + s.split("·").pop().trim());
+  return s;
 }
 
 /* ---------- lanes ---------- */
@@ -563,18 +656,23 @@ function gitLine(l) {
 }
 var prevSig = null, nextSig = {};
 var stepInfo = "";
-function countText(total, shownN) { return shownN + " of " + total + " lanes" + stepInfo; }
+// "18 lanes" when every one is shown, "6/18 lanes" when a filter hides some
+function ofText(shownN, total, word) { return (String(shownN) === String(total) ? total : shownN + "/" + total) + " " + word; }
+function countText(total, shownN) { return ofText(shownN, total, "lanes") + stepInfo; }
 function drawFilters(total, shownN) {
-  var f = clear($("filters"));
-  [["recent", "Live + last 3 h"], ["day", "Last 24 h"], ["live", "Live only"], ["attention", "Needs attention"], ["all", "All"]].forEach(function (x) {
+  var f = clear($("filters")), seg = h("div", "seg");
+  seg.setAttribute("role", "group"); seg.setAttribute("aria-label", "Which lanes to show");
+  [["recent", "Recent", "Live lanes, plus lanes active in the last 3 hours"], ["day", "24 h", "Live lanes, plus lanes active in the last 24 hours"], ["live", "Live", "Running or idle lanes only"],
+    ["attention", "Attention", "Failed, stopped or idle lanes, and open decisions"], ["all", "All", "Every lane"]].forEach(function (x) {
     var b = h("button", filter === x[0] ? "on" : "", x[1]);
+    b.title = x[2];
     b.setAttribute("aria-pressed", filter === x[0] ? "true" : "false"); b.dataset.key = "f:" + x[0];
     b.addEventListener("click", function () { filter = x[0]; try { localStorage.setItem("dash-filter", filter); } catch (e) {} draw(); });
-    f.appendChild(b);
+    seg.appendChild(b);
   });
-  var cnt = h("span", "muted small", countText(total, shownN)); cnt.id = "laneCount"; cnt.dataset.total = total; cnt.dataset.shown = shownN;
+  f.appendChild(seg);
+  var cnt = h("span", "small", countText(total, shownN)); cnt.id = "laneCount"; cnt.dataset.total = total; cnt.dataset.shown = shownN;
   f.appendChild(cnt);
-
 }
 function drawLanes() {
   var lanes = lanesOf(data.runs || []);
@@ -585,14 +683,12 @@ function drawLanes() {
 function trainRow(r) {
   var tr = r.train || {};
   var row = h("div", "train");
-  row.appendChild(h("div", "row", "", [pill(r.state), h("b", "", trainName(r)), h("span", "muted small", live(r.state) ? "active " + ago(r.activity) : ago(r.end || r.activity)),
-    etaText(r) ? h("span", "badge eta", etaText(r)) : null]));
+  row.appendChild(h("div", "hd", "", [h("span", "dot " + r.state), h("b", "", trainName(r)),
+    h("span", "sp", "", [etaText(r) ? h("span", "", etaText(r)) : null, h("span", "", live(r.state) ? "active " + ago(r.activity) : ago(r.end || r.activity))])]));
   row.appendChild(chipsOf(r));
-  if (tr.branches && tr.branches.length) {
-    row.appendChild(h("div", "chips", "", tr.branches.map(function (b) { return h("span", "chip " + (tr.merged ? "done" : "pending"), (tr.merged ? "merged " : "queued ") + b); })));
-  }
-  row.appendChild(h("div", "row small", "", [h("span", "muted", "gate"), checkPill(r, tr.gate), h("span", "muted", "smoke"), checkPill(r, tr.smoke),
-    tr.tip ? h("span", "mono muted", tr.tip.slice(0, 8)) : null, tr.conflicts ? h("span", "muted", tr.conflicts + " conflicts resolved") : null]));
+  if (tr.branches && tr.branches.length) row.appendChild(h("div", "ln", (tr.merged ? "Merged: " : "Queued: ") + tr.branches.join(", ")));
+  row.appendChild(h("div", "ln", "", [h("div", "row", "", [h("span", "", "", [document.createTextNode("gate "), checkPill(r, tr.gate)]), h("span", "", "", [document.createTextNode("smoke "), checkPill(r, tr.smoke)]),
+    tr.tip ? h("span", "mono", tr.tip.slice(0, 8)) : null, tr.conflicts ? h("span", "", tr.conflicts + " conflicts resolved") : null])]));
   clickable(row, function () { openDrawer("run:" + r.id); }, "train:" + r.id, trainName(r) + ", " + r.state);
   return row;
 }
@@ -645,7 +741,7 @@ function stepEta(hits, noCount) {
   var known = hits.filter(function (r) { return r.eta && r.eta.known; });
   var late = known.some(function (r) { return r.eta.overdue; });
   var left = known.length ? Math.max.apply(null, known.map(function (r) { return r.eta.remainingMs; })) : 0;
-  return (known.length ? (late && !left ? "past usual" : "ETA ~" + dur(left)) : "running") + (hits.length > 1 && !noCount ? " \u00b7 " + hits.length + " live" : "");
+  return (known.length ? (late && !left ? "late" : "~" + dur(left)) : "running") + (hits.length > 1 && !noCount ? " \u00b7 " + hits.length + " live" : "");
 }
 function taskFor(r) {
   var items = (data.plan && data.plan.items) || [], tokens;
@@ -662,8 +758,11 @@ function drawPlan() {
   if (auto) box.appendChild(h("div", "stalehint", auto + (auto === 1 ? " step looks" : " steps look") + " stale: its lane has ended but the list was not updated"));
   items.forEach(function (i, ix) {
     var ss = sts[ix], hits = ss.status === "completed" || ss.auto ? [] : stepRuns(i.content), eta = stepEta(hits);
-    var trow = h("div", "task " + ss.status + (focus.step === i.content ? " sel" : ""), "", [h("span", "box", ss.status === "completed" ? "✓" : ss.auto === "failed" ? "\u2715" : ss.auto === "stopped" ? "\u25a0" : ""), h("span", "", i.content),
-      eta ? h("span", "badge eta", eta) : ss.auto ? h("span", "badge", ss.note) : null]);
+    var eb = eta ? h("span", "badge eta", eta) : ss.auto ? h("span", "badge eta", ss.note) : null;
+    if (eta) eb.title = "Time left for the live runs this step names (matched by name)";
+    else if (ss.auto) eb.title = "Every run this step names has ended; the lead has not updated the step";
+    var trow = h("div", "task " + ss.status + (ss.auto ? " auto-" + ss.auto : "") + (focus.step === i.content ? " sel" : ""), "",
+      [h("span", "box", "", [ss.status === "completed" ? icon("check") : ss.auto === "failed" ? icon("x") : null]), h("span", "", i.content), eb]);
     trow.title = "Hover to highlight in the tree, click to pin and move there";
     clickable(trow, function () { selectStep(i.content); }, "t:" + i.content, i.content + ", " + ss.status.replace("_", " ") + (ss.auto ? ", " + ss.note : "") + (focus.step === i.content ? ", pinned" : ""));
     trow.addEventListener("focus", function () { focus.hover = i.content; applyHighlight(); });
@@ -676,20 +775,22 @@ function drawPlan() {
     hits.forEach(function (r) { r.agents.forEach(function (a) { if (a.state === "running" || a.state === "idle") ag.push({ r: r, a: a }); }); });
     ag.slice(0, 6).forEach(function (x) {
       var row = h("div", "taskagent lnk", "", [h("span", "dot " + x.a.state), h("span", "nm", (x.r.isTrain ? "train" : x.r.lane) + ": " + (x.a.label || x.a.id)), x.a.model ? modelBadge(x.a.model) : null,
-        h("span", "muted small", ago(x.a.activity))]);
+        h("span", "muted small", ago(x.a.activity).replace(" ago", ""))]);
+      row.title = x.a.state + ", last activity " + ago(x.a.activity);
       clickable(row, function () { openDrawer(x.r.isTrain ? "run:" + x.r.id : x.r.session + "|" + x.r.lane); }, "ta:" + x.r.id + "|" + x.a.id);
       box.appendChild(row);
     });
     if (ag.length > 6) box.appendChild(h("div", "taskagent muted small", "+" + (ag.length - 6) + " more agents"));
   });
-  var when = p.updated ? " · updated " + ago(Date.parse(p.updated)) : "";
-  box.appendChild(h("div", "muted small", done + " of " + items.length + " done" + when));
   var age = p.updated ? Date.now() - Date.parse(p.updated) : 0;
+  setCount("planCnt", done + "/" + items.length, done + " of " + items.length + " done" + (p.updated ? ", updated " + ago(Date.parse(p.updated)) : ""));
   var stale = age > 30 * 60e3 && (data.runs || []).some(function (r) { return live(r.state); });
   box.style.opacity = stale ? "0.6" : "";
-  if (stale) box.appendChild(h("div", "err", "Out of date: agents have been working since, but the lead has not updated this list."));
+  if (stale) box.appendChild(h("div", "stale", "Out of date: not updated for " + dur(age) + " while agents work."));
   applyHighlight();
 }
+// the small count beside a panel's name
+function setCount(id, text, title, hot) { var c = $(id); if (!c) return; c.textContent = text === "" || text === null || text === undefined ? "" : String(text); c.title = title || ""; c.classList.toggle("hot", !!hot); }
 var needAll = false;
 function drawNeed() {
   var all = data.attention || [], box = clear($("need"));
@@ -698,35 +799,39 @@ function drawNeed() {
   var major = all.filter(function (n) { return n.sev !== "low"; });
   // with nothing urgent the panel moves below the others instead of taking the top slot
   $("needPanel").classList.toggle("quiet", !major.length);
-  var items = needAll ? all : major;
+  var items = needAll ? all : major, high = all.filter(function (n) { return n.sev === "high"; }).length;
+  setCount("needCnt", major.length || "", major.length + " urgent" + (high ? " (" + high + " high)" : "") + ", " + (all.length - major.length) + " minor", high > 0);
   if (!items.length) box.appendChild(h("div", "muted small", "Nothing urgent."));
   items.slice(0, 40).forEach(function (n) {
     var row = h("div", "need", "", [h("span", "sev " + n.sev), h("span", "t", "", [n.lane ? h("b", "", n.lane) : null, document.createTextNode(n.text)])]);
+    row.title = (n.sev === "high" ? "Urgent" : n.sev === "med" ? "Soon" : "Minor") + (n.key ? ": click to open the lane" : "");
     if (n.key) clickable(row, function () { openDrawer(n.key); }, "n:" + n.key + "|" + n.text);
     box.appendChild(row);
   });
   var minor = all.length - major.length;
   if (minor) {
-    var btn = h("button", "minibtn", needAll ? "Hide " + minor + " minor" : "Show " + minor + " minor (old stopped runs, open issues, notes)");
+    var btn = h("button", "minibtn", needAll ? "Hide " + minor + " minor" : "Show " + minor + " minor");
+    btn.title = "Old stopped runs, open issues, notes";
     btn.dataset.key = "needAll"; btn.setAttribute("aria-expanded", needAll ? "true" : "false");
     btn.addEventListener("click", function () { needAll = !needAll; draw(); });
     box.appendChild(btn);
   }
 }
-function mixBar(counts, fmt) {
-  var order = ["opus", "sonnet", "haiku", "fable", "other", "default"], total = 0;
-  order.forEach(function (k) { total += counts[k] || 0; });
-  var wrap = h("div");
-  if (!total) { wrap.appendChild(h("div", "muted small", "none")); return wrap; }
-  var bar = h("div", "mixbar"), legend = h("div", "legend");
-  order.forEach(function (k) {
+var FAMS = ["opus", "sonnet", "haiku", "fable", "other", "default"];
+function famWord(k) { return k.charAt(0).toUpperCase() + k.slice(1); }
+// one row of the model mix: a label, a bar split by model family (exact numbers on hover) and the total
+function mixRow(label, counts, fmt) {
+  var total = 0, bar = h("div", "mixbar");
+  FAMS.forEach(function (k) { total += counts[k] || 0; });
+  FAMS.forEach(function (k) {
     if (!counts[k]) return;
-    var seg = h("i", "f-" + k); seg.style.width = (counts[k] / total * 100) + "%"; bar.appendChild(seg);
-    var sw = h("i", "f-" + k);
-    legend.appendChild(h("span", "", "", [sw, document.createTextNode(k.charAt(0).toUpperCase() + k.slice(1) + ": " + (fmt ? fmt(counts[k]) : counts[k] + (counts[k] === 1 ? " agent" : " agents")))]));
+    var seg = h("i", "f-" + k); seg.style.width = (counts[k] / total * 100) + "%";
+    seg.title = famWord(k) + ": " + (fmt ? fmt(counts[k]) : counts[k] + (counts[k] === 1 ? " agent" : " agents"));
+    bar.appendChild(seg);
   });
-  wrap.appendChild(bar); wrap.appendChild(legend);
-  return wrap;
+  var row = h("div", "mixrow", "", [h("span", "", label), bar, h("b", "", total ? (fmt ? fmt(total) : total) : "–")]);
+  row.title = label + ": " + (total ? FAMS.filter(function (k) { return counts[k]; }).map(function (k) { return famWord(k) + " " + (fmt ? fmt(counts[k]) : counts[k]); }).join(", ") : "none");
+  return row;
 }
 function drawMix() {
   var box = clear($("mix")), liveC = {}, dayC = {}, now = Date.now();
@@ -742,36 +847,41 @@ function drawMix() {
     if (a.state !== "done") liveC[f] = (liveC[f] || 0) + 1;
     if (now - a.activity < 24 * 3600e3) dayC[f] = (dayC[f] || 0) + 1;
   });
-  box.appendChild(h("div", "subh", "Agents working now"));
-  box.appendChild(mixBar(liveC));
-  box.appendChild(h("div", "subh", "Agents in the last 24 h"));
-  box.appendChild(mixBar(dayC));
   var fam = (data.burn && data.burn.byFamily5h) || {};
-  if (Object.keys(fam).length) { box.appendChild(h("div", "subh", "Tokens by model, last 5 h")); box.appendChild(mixBar(fam, tok)); }
-  if (liveC["default"] || dayC["default"] || fam["default"]) box.appendChild(h("div", "muted small", "\u201cDefault\u201d means the record names no model, so the run's default applies."));
-  if (box.firstChild) box.firstChild.style.marginTop = "0";
+  box.appendChild(mixRow("Now", liveC));
+  box.appendChild(mixRow("24 h", dayC));
+  if (Object.keys(fam).length) box.appendChild(mixRow("Tokens 5 h", fam, tok));
+  var seen = FAMS.filter(function (k) { return liveC[k] || dayC[k] || fam[k]; });
+  if (seen.length) {
+    var lg = h("div", "legend");
+    seen.forEach(function (k) { lg.appendChild(h("span", "", "", [h("i", "f-" + k), document.createTextNode(famWord(k))])); });
+    if (seen.indexOf("default") >= 0) lg.title = "“Default” means the record names no model, so the run's default applies.";
+    box.appendChild(lg);
+  }
 }
 function kv(k, v, cls) { return h("div", "kv", "", [h("span", "", k), h("b", cls || "", v)]); }
 function forecastLine(label, fc) {
   if (!fc || fc.mismatch) return null;
-  var text = fc.hitsBeforeReset ? "+" + fc.ratePerHour + "%/h: the limit is reached in " + dur(fc.to100Min * 60000) + ", before the reset" : "+" + fc.ratePerHour + "%/h: lasts until the reset";
-  return h("div", "kv fc", "", [h("span", "muted", label + " window"), h("b", fc.hitsBeforeReset ? "hot" : "", text)]);
+  var row = kv(label, "+" + fc.ratePerHour + "%/h · " + (fc.hitsBeforeReset ? "full in " + dur(fc.to100Min * 60000) : "lasts to reset"), fc.hitsBeforeReset ? "hot" : "");
+  row.title = label + " window: rising " + fc.ratePerHour + "% per hour; " + (fc.hitsBeforeReset ? "the limit is reached in " + dur(fc.to100Min * 60000) + ", before the reset" : "it lasts until the reset");
+  return row;
 }
 function drawBurn() {
   var b = data.burn, box = clear($("burn")), fc = (b && b.forecast) || {};
   if (!b) { box.appendChild(h("div", "muted small", "No burn numbers yet.")); return; }
-  var f5 = forecastLine("5-hour", fc.fiveHour), fw = forecastLine("Weekly", fc.weekly);
+  var f5 = forecastLine("5h forecast", fc.fiveHour), fw = forecastLine("Week forecast", fc.weekly);
   if (f5) box.appendChild(f5);
   if (fw) box.appendChild(fw);
-  if (!f5 && !fw) box.appendChild(h("div", "muted small", "Burn rate unknown: the usage log does not match this account. The limits are in the header."));
-  var working = b.liveAgents ? b.liveAgents + (b.liveAgents === 1 ? " agent" : " agents") + " running, " + tok(b.liveOutTokens) + " output so far" : "No agents running";
-  box.appendChild(h("div", "kv work", "", [h("span", "", "Now"), h("b", "", working)]));
-  if (b.finished1h || b.finished5h) box.appendChild(h("div", "muted small", "Finished: " + tok(b.finished1h) + " tokens in the last hour, " + tok(b.finished5h) + " in 5 hours."));
+  if (!f5 && !fw) { var nf = kv("Forecast", "unknown"); nf.title = "No reliable rate: too few usage samples, or the usage log belongs to another account. The limits are in the header."; box.appendChild(nf); }
+  box.appendChild(kv("Running", b.liveAgents ? b.liveAgents + (b.liveAgents === 1 ? " agent" : " agents") + " · " + tok(b.liveOutTokens) + " out" : "none"));
+  if (b.finished1h || b.finished5h) { var fin = kv("Finished", tok(b.finished1h) + " in 1 h · " + tok(b.finished5h) + " in 5 h"); fin.title = "Context tokens of agents that finished in the last hour and the last 5 hours"; box.appendChild(fin); }
   if (b.topLanes && b.topLanes.length) {
-    box.appendChild(h("div", "subh", "Most expensive lanes, last 24 h"));
+    box.appendChild(h("div", "subh", "Top lanes, 24 h"));
+    var maxT = Math.max.apply(null, b.topLanes.map(function (l) { return l.tokens || 0; })) || 1;
     b.topLanes.forEach(function (l) {
-      var nm = h("span", "mono", l.lane); nm.title = l.lane;
-      var r = h("div", "kv lnk", "", [nm, h("b", "", tok(l.tokens))]);
+      var fill = h("i"); fill.style.width = Math.round((l.tokens || 0) / maxT * 100) + "%";
+      var r = h("div", "top lnk", "", [h("span", "nm", l.lane), h("span", "tb", "", [fill]), h("b", "", tok(l.tokens))]);
+      r.title = l.lane + (l.title ? ": " + l.title : "") + "\n" + tok(l.tokens) + " tokens in the last 24 h";
       clickable(r, function () { openDrawer(l.key); }, "top:" + l.key, l.lane + ", " + tok(l.tokens) + " tokens");
       box.appendChild(r);
     });
@@ -780,25 +890,30 @@ function drawBurn() {
 function drawReady() {
   var items = data.ready || [], box = clear($("ready"));
   $("readyPanel").hidden = !items.length;
+  setCount("readyCnt", items.length || "");
   items.slice(0, 12).forEach(function (x) {
-    var row = h("div", "need lnk", "", [h("span", "sev " + (x.shipOk === false ? "high" : x.shipOk ? "ok" : "med")), h("span", "t", "", [h("b", "", x.lane),
-      document.createTextNode("\u2191" + x.ahead + (x.behind ? " \u2193" + x.behind : "") + " \u00b7 " + x.tip + " \u00b7 " + (x.train ? "in train " + x.train : "not in a train") + (x.pushed ? " \u00b7 pushed" : " \u00b7 not pushed") + (x.shipOk === false ? " \u00b7 final check failed" : x.shipOk ? " \u00b7 final check passed" : ""))])]);
+    var meta = h("span", "rm", "", [document.createTextNode(x.tip + (x.train ? " · in train " + x.train : "") + " · "), x.pushed ? document.createTextNode("pushed") : h("span", "warn", "not pushed")]);
+    var row = h("div", "need lnk", "", [h("span", "sev " + (x.shipOk === false ? "high" : x.shipOk ? "ok" : "med")), h("span", "t", "", [h("b", "", x.lane), meta]),
+      h("span", "num", "↑" + x.ahead + (x.behind ? " ↓" + x.behind : ""))]);
+    row.title = x.lane + (x.title ? ": " + x.title : "") + "\n" + x.ahead + " ahead" + (x.behind ? ", " + x.behind + " behind" : "") + " · " + (x.train ? "in train " + x.train : "not in a train") +
+      " · " + (x.pushed ? "pushed" : "not pushed") + " · " + (x.shipOk === false ? "final check failed" : x.shipOk ? "final check passed" : "no final check");
     clickable(row, function () { openDrawer(x.key); }, "r:" + x.key);
     box.appendChild(row);
   });
-  if (items.length > 12) box.appendChild(h("div", "muted small", "+" + (items.length - 12) + " more"));
+  if (items.length > 12) box.appendChild(h("div", "foot", "+" + (items.length - 12) + " more"));
 }
 function drawSide() {
   var items = data.side || [], box = clear($("side"));
   $("sidePanel").hidden = !items.length;
+  setCount("sideCnt", items.length || "");
   items.slice(0, 10).forEach(function (a) {
     var row = h("div", "agent", "", [h("span", "dot " + (a.state === "done" ? "done" : a.state)), h("span", "nm", a.description || a.id)]);
     if (a.model) row.appendChild(modelBadge(a.model));
-    row.appendChild(h("span", "muted small", a.state === "done" ? ago(a.activity) : a.state + " " + ago(a.activity)));
+    row.appendChild(h("span", "muted small", ago(a.activity).replace(" ago", "")));
+    row.title = (a.description || a.id) + "\n" + a.state + ", last activity " + ago(a.activity);
     box.appendChild(row);
   });
-  if (items.length > 10) box.appendChild(h("div", "muted small", "+" + (items.length - 10) + " older"));
-  box.appendChild(h("div", "muted small", "Subagents started directly by the lead, outside a workflow."));
+  if (items.length > 10) box.appendChild(h("div", "foot", "+" + (items.length - 10) + " older"));
 }
 function drawTrains() {
   var t = clear($("trains")), trains = (data.runs || []).filter(function (r) { return r.isTrain; });
@@ -806,35 +921,38 @@ function drawTrains() {
   var shown = filter === "all" || filter === "day" ? trains.slice(0, 8) : trains.filter(function (r) { return live(r.state) || Date.now() - (r.end || r.activity) < RECENT_MS.recent; }).slice(0, 4);
   if (!shown.length) shown = trains.slice(0, 1);
   shown.forEach(function (r) { t.appendChild(trainRow(r)); });
-  if (trains.length > shown.length) t.appendChild(h("div", "muted small", trains.length - shown.length + " older trains hidden"));
+  if (trains.length > shown.length) t.appendChild(h("div", "foot", "+" + (trains.length - shown.length) + " older trains"));
 }
 function drawWorktrees() {
   var box = clear($("wts")), g = data.git;
-  if (!g || !g.available) { box.appendChild(h("div", "muted small", "No git data.")); return; }
+  if (!g || !g.available) { setCount("wtsCnt", ""); box.appendChild(h("div", "muted small", "No git data.")); return; }
   var named = g.worktrees.filter(function (w) { return w.branch; }), loose = g.worktrees.length - named.length;
+  setCount("wtsCnt", named.length || "");
   var grid = h("div", "wt");
   named.slice(0, 40).forEach(function (w) {
-    grid.appendChild(h("div", "mono", w.branch));
-    grid.appendChild(h("div", "mono muted", w.ahead === null || w.ahead === undefined ? "" : "↑" + w.ahead + " ↓" + w.behind));
-    grid.appendChild(h("div", "small " + (w.dirty ? "" : "muted"), w.dirty === null ? "?" : w.dirty ? w.dirty + " dirty" : "clean"));
+    grid.appendChild(h("div", "", w.branch));
+    var ab = h("div", "muted", w.ahead === null || w.ahead === undefined ? "" : "↑" + w.ahead + " ↓" + w.behind);
+    ab.title = w.ahead === null || w.ahead === undefined ? "" : w.ahead + " ahead of, " + w.behind + " behind " + g.integration;
+    grid.appendChild(ab);
+    grid.appendChild(h("div", w.dirty ? "warn" : "muted", w.dirty === null ? "?" : w.dirty ? w.dirty + " dirty" : "clean"));
   });
   box.appendChild(grid);
-  box.appendChild(h("div", "muted small", "compared with " + (g.integration || "(no integration branch)") + (loose ? " · +" + loose + " detached worktrees" : "")));
+  box.appendChild(h("div", "foot", "vs " + (g.integration || "(no integration branch)") + (loose ? " · " + loose + " detached" : "")));
 }
 function drawEvents() {
   var ev = [];
   (data.runs || []).forEach(function (r) {
     var tag = r.lane;
     r.agents.forEach(function (a) {
-      if (a.started) ev.push({ t: a.started, s: tag + ": " + (a.label || a.id) + " started" });
-      if (a.state === "done" && a.activity) ev.push({ t: a.activity, s: tag + ": " + (a.label || a.id) + " finished" });
-      if (a.state === "failed") ev.push({ t: a.activity, s: tag + ": " + (a.label || a.id) + " failed" + (a.error ? " — " + a.error : "") });
+      if (a.started) ev.push({ t: a.started, k: "pending", s: tag + ": " + (a.label || a.id) + " started" });
+      if (a.state === "done" && a.activity) ev.push({ t: a.activity, k: "done", s: tag + ": " + (a.label || a.id) + " finished" });
+      if (a.state === "failed") ev.push({ t: a.activity, k: "failed", s: tag + ": " + (a.label || a.id) + " failed" + (a.error ? " — " + a.error : "") });
     });
-    if ((r.state === "killed" || r.state === "done" || r.state === "failed") && r.end) ev.push({ t: r.end, s: tag + ": run " + r.state });
+    if ((r.state === "killed" || r.state === "done" || r.state === "failed") && r.end) ev.push({ t: r.end, k: r.state, s: tag + ": run " + (r.state === "killed" ? "stopped" : r.state) });
   });
   ev.sort(function (a, b) { return b.t - a.t; });
   var box = clear($("events"));
-  ev.slice(0, 60).forEach(function (e) { box.appendChild(h("div", "ev", "", [h("time", "", hhmm(e.t)), h("span", "", e.s)])); });
+  ev.slice(0, 60).forEach(function (e) { box.appendChild(h("div", "ev", "", [h("time", "", hhmm(e.t)), h("span", "dot " + e.k), h("span", "", e.s)])); });
   if (!ev.length) box.appendChild(h("div", "muted small", "Nothing yet."));
 }
 
@@ -975,7 +1093,8 @@ function usageTable(a) {
   var g = h("div", "ut");
   g.appendChild(h("div", "hd", ""));
   g.appendChild(h("div", "hd r", "Now"));
-  g.appendChild(h("div", "hd r", "Typical for this kind of agent"));
+  var th = h("div", "hd r", "Typical"); th.title = "Median of finished agents in the same workflow and stage";
+  g.appendChild(th);
   usageRows(a).forEach(function (r) {
     g.appendChild(h("div", "lb", r.k));
     var now = h("div", "r", "", [h("div", "num" + (r.over ? " over" : ""), r.nowText)]);
@@ -1002,7 +1121,7 @@ function agentDrawer(key) {
   var i = key.lastIndexOf("|"), lk = key.slice(6, i), id = key.slice(i + 1), l = findSubject(lk);
   var a = l && l.latest.agents.filter(function (x) { return x.id === id; })[0];
   if (!a) { document.body.classList.remove("open"); return; }
-  var d = clear($("drawer")), back = h("button", "iconbtn", "\u2039 Lane"), close = closeBtn();
+  var d = clear($("drawer")), back = h("button", "iconbtn", "", [icon("back"), document.createTextNode("Lane")]), close = closeBtn();
   back.dataset.key = "d:back";
   back.addEventListener("click", function () { openDrawer(lk); });
   d.appendChild(h("div", "row", "", [pill(a.state === "failed" ? "failed" : a.state), back, close]));
@@ -1038,7 +1157,7 @@ function metaDrawer(kind) {
     };
     if (pend) d.appendChild(block("running", [["Thinking about", (ld.step || (log[0] && log[0].asked) || "the current decision")], ["Waiting", waitText(Date.now() - pend.since) + " so far"]]));
     d.appendChild(block("done", [["Used", adv.calls ? adv.calls + (adv.calls > 1 ? " times" : " time") + " in this session, last " + ago(Date.parse(adv.last)) + "." : "Not consulted yet in this session."],
-      ["What it is", "A stronger reviewer model the lead consults before big decisions and before declaring work done. It reads the lead's whole conversation and answers with advice; it does not run tools or change files."]]));
+      ["What it is", "A stronger model the lead consults before big decisions and before calling work done. It reads the lead's conversation and gives advice; it runs no tools."]]));
     if (!log.length) d.appendChild(block("idle", [["Consults", "No consults logged yet. The lead writes a note after each one."]]));
     log.forEach(function (e) {
       var head = h("span", "", "", [document.createTextNode(ago(e.at) + "  "), e.model ? modelBadge(e.model) : null]);
@@ -1072,12 +1191,12 @@ function drawDrawer() {
   d.appendChild(chipsOf(r));
   if (live(r.state) && r.eta && r.eta.known) d.appendChild(h("div", "muted small", (r.eta.overdue ? "Past its usual time. " : "Estimated " + dur(r.eta.remainingMs) + " left. ") + "Based on " + r.eta.samples + " finished agents of the same phase."));
   var res = resultBlocks(r);
-  d.appendChild(section("Full result", res.length ? res : [h("p", "muted", live(r.state) ? "Still running: no result yet." : "No result text recorded.")]));
+  d.appendChild(section("Result", res.length ? res : [h("p", "muted", live(r.state) ? "Still running: no result yet." : "No result text recorded.")]));
   if (r.train) {
     var tr = r.train;
     d.appendChild(section("Train", [h("p", "", "Branches: " + ((tr.branches || []).join(", ") || "n/a") + "\nTip: " + (tr.tip || "n/a") + "\nGate: " + checkText(r, tr.gate) + "   Smoke: " + checkText(r, tr.smoke) + (tr.gateNote ? "\n" + tr.gateNote : ""))]));
   }
-  d.appendChild(section("Agents in the latest run", r.agents.map(function (a) {
+  d.appendChild(section("Agents (latest run)", r.agents.map(function (a) {
     var b = h("div", "block");
     b.appendChild(h("div", "row arow", "", [h("span", "dot " + a.state), h("b", "", a.label || a.id), a.model ? modelBadge(a.model) : null, a.phase ? h("span", "muted small", a.phase) : null]));
     b.appendChild(h("div", "muted small", a.state + (a.activity ? " \u00b7 last activity " + ago(a.activity) : "")));
@@ -1090,10 +1209,14 @@ function drawDrawer() {
     return b;
   })));
   if (r.logs && r.logs.length) d.appendChild(section("Run log", r.logs.map(function (x) { return h("p", "small mono", x); })));
-  d.appendChild(section("Runs (" + l.runs.length + ") and how to resume", l.runs.slice(0, 12).map(runBlock)));
+  d.appendChild(section("Runs (" + l.runs.length + ") · resume commands", l.runs.slice(0, 12).map(runBlock)));
   document.body.classList.add("open");
 }
-function closeBtn() { var c = h("button", "iconbtn dclose", "Close"); c.dataset.key = "d:close"; c.addEventListener("click", closeDrawer); return c; }
+function closeBtn() {
+  var c = h("button", "iconbtn ico dclose", "", [icon("x")]);
+  c.setAttribute("aria-label", "Close"); c.title = "Close (Esc)";
+  c.dataset.key = "d:close"; c.addEventListener("click", closeDrawer); return c;
+}
 var drawerOpener = "";
 function focusKey(key) {
   if (!key) return false;
@@ -1203,11 +1326,11 @@ function isFolded(n) {
 }
 function agentNode(a, key) {
   var kids = (a.helpers || []).map(function (x) {
-    return { id: key + "|" + a.id + "|h" + x.desc, kind: "helper", w: 240, h: 36, label: x.desc, sub: x.done ? "helper · finished" : "helper · working", state: x.done ? "done" : "running", model: x.model, children: [] };
+    return { id: key + "|" + a.id + "|h" + x.desc, kind: "helper", w: 220, h: 34, label: x.desc, sub: x.done ? "helper · finished" : "helper · working", state: x.done ? "done" : "running", model: x.model, children: [] };
   });
   var loopy = a.repeat >= 4, sub = a.state === "failed" ? (a.error || "failed") : loopy ? "repeating the same call ×" + a.repeat : a.now ? plainTool(a.now) : (a.state === "done" ? "finished" : a.state);
   // agents are listed under their stage (the stage is their heading), so a live lane needs one column less
-  return { id: key + "|" + a.id, kind: "agent", w: 270, h: 52, label: a.label || a.id, sub: sub, loop: loopy, state: a.state,
+  return { id: key + "|" + a.id, kind: "agent", w: 250, h: 46, label: a.label || a.id, sub: sub, loop: loopy, state: a.state,
     model: a.model, key: "agent:" + key + "|" + a.id, children: kids, foldDefault: false, below: true, indent: 14 };
 }
 function stageNodes(r, key) {
@@ -1216,11 +1339,11 @@ function stageNodes(r, key) {
     seen[ph.title] = 1;
     var ags = r.agents.filter(function (a) { return a.phase === ph.title; });
     if (!ags.length) return;
-    out.push({ id: key + "|st|" + ph.title, kind: "stage", w: 210, h: 34, label: ph.title, sub: ags.length ? ags.length + (ags.length > 1 ? " agents" : " agent") : "not started", state: ph.state,
+    out.push({ id: key + "|st|" + ph.title, kind: "stage", w: 190, h: 30, label: ph.title, sub: ags.length ? ags.length + (ags.length > 1 ? " agents" : " agent") : "not started", state: ph.state,
       key: key, children: ags.map(function (a) { return agentNode(a, key); }) });
   });
   var loose = r.agents.filter(function (a) { return !seen[a.phase]; });
-  if (loose.length) out.push({ id: key + "|st|other", kind: "stage", w: 210, h: 34, label: "Other", sub: loose.length + (loose.length > 1 ? " agents" : " agent"), state: "", key: key, children: loose.map(function (a) { return agentNode(a, key); }) });
+  if (loose.length) out.push({ id: key + "|st|other", kind: "stage", w: 190, h: 30, label: "Other", sub: loose.length + (loose.length > 1 ? " agents" : " agent"), state: "", key: key, children: loose.map(function (a) { return agentNode(a, key); }) });
   return out;
 }
 function progOf(r) {
@@ -1230,24 +1353,24 @@ function progOf(r) {
 }
 // the text rows of a lane box, top to bottom; the box is only as tall as its rows
 function sizeLane(n) {
-  var W = n.w - 34, rows = [], y = 50;
-  wrapLines(n.sub, W, 2, 6.8).forEach(function (ln) { rows.push({ cls: "m", y: y, t: ln }); y += 16; });
-  if (rows.length) y += 6;
+  var W = n.w - PX - 12, rows = [], y = 41;
+  wrapLines(n.sub, W, 2, 6.3).forEach(function (ln) { rows.push({ cls: "m", y: y, t: ln }); y += 15; });
+  if (rows.length) y += 3;
   // a sub line too long for one row breaks at its first " · " instead of being cut short
   if (n.sub2) {
-    var cut2 = n.sub2.indexOf(" · "), parts2 = n.sub2.length * 6.4 > W && cut2 > 0 ? [n.sub2.slice(0, cut2), n.sub2.slice(cut2 + 3)] : [n.sub2];
-    parts2.forEach(function (t) { rows.push({ cls: "s", y: y, t: t }); y += 16; });
+    var cut2 = n.sub2.indexOf(" · "), parts2 = n.sub2.length * 6.0 > W && cut2 > 0 ? [n.sub2.slice(0, cut2), n.sub2.slice(cut2 + 3)] : [n.sub2];
+    parts2.forEach(function (t) { rows.push({ cls: "s", y: y, t: t }); y += 15; });
   }
-  if (n.sub3) { rows.push({ cls: "g", y: y, t: n.sub3 }); y += 16; }
+  if (n.sub3) { rows.push({ cls: "g", y: y, t: n.sub3 }); y += 15; }
   if (n.sub4) { rows.push({ cls: "s", y: y, t: n.sub4 }); y += 15; }
-  var last = rows.length ? rows[rows.length - 1].y : 28;
-  n.rows = rows; n.h = Math.max(64, last + (n.prog ? 20 : 14));
+  var last = rows.length ? rows[rows.length - 1].y : 24;
+  n.rows = rows; n.h = Math.max(48, last + (n.prog ? 16 : 11));
   return n;
 }
-function sizeTask(n) { n.lines = wrapLines(n.label, n.w - 34, 2, 7.6); n.h = n.lines.length > 1 ? 84 : 68; return n; }
+function sizeTask(n) { n.lines = wrapLines(n.label, n.w - PX - 12, 2, 7.0); n.h = n.lines.length > 1 ? 66 : 50; return n; }
 function buildTree() {
   var runs = data.runs || [], lead = data.lead;
-  var root = { id: "lead", kind: "lead", w: 310, h: 104, key: "lead", state: lead && lead.state === "working" ? "running" : "idle", children: [] };
+  var root = { id: "lead", kind: "lead", w: 290, h: 86, key: "lead", state: lead && lead.state === "working" ? "running" : "idle", children: [] };
   root.label = "Lead" + (lead && lead.model ? ", " + modelName(lead.model) : "");
   root.model = lead ? lead.model : "";
   root.sub = lead ? (lead.state === "working" ? "working now" : "waiting for you or for jobs") + " · " + ago(lead.activity) : "session " + (data.session || "").slice(0, 8);
@@ -1255,7 +1378,7 @@ function buildTree() {
   var adv = lead && lead.advisor;
   var alog = data.advisorLog || [], alast = alog[0], pend = adv && adv.pending;
   // the advisor sits under the lead in the lead's own column, so that column is not empty below the lead
-  root.children.push({ id: "advisor", kind: "advisor", key: "advisor", below: true, w: 290, h: 92, label: "Advisor", model: alast ? alast.model : "",
+  root.children.push({ id: "advisor", kind: "advisor", key: "advisor", below: true, w: 290, h: 82, label: "Advisor", model: alast ? alast.model : "",
     state: pend ? "running" : (adv && adv.calls) || alog.length ? "done" : "pending",
     sub: pend ? "Thinking · waiting " + waitText(Date.now() - pend.since) : alog.length ? alog.length + " logged · last " + ago(alog[0].at) : adv && adv.calls ? adv.calls + (adv.calls > 1 ? " consultations" : " consultation") + " · last " + ago(Date.parse(adv.last)) : "not consulted yet",
     sub2: pend ? "about: " + ((lead && lead.step) || (alast && alast.asked) || "the current decision") : alast ? "Advice: " + alast.advice : (adv && adv.calls ? "No consults logged yet." : ""), children: [] });
@@ -1265,7 +1388,7 @@ function buildTree() {
   lanes.filter(visible).forEach(function (l) {
     var r = l.latest, eta = boxEta(r), gl = gitLine(l);
     var sig = l.state + "|" + r.agents.map(function (a) { return a.id + a.state; }).join(",") + "|" + r.phases.map(function (p) { return p.state; }).join(",");
-    units.push({ run: r, node: sizeLane({ id: l.key, kind: "lane", w: 330, label: l.lane, sub: l.title, sub2: (eta ? eta + " · " : "") + (live(l.state) ? "active " + ago(r.activity) : "finished " + ago(r.end || r.activity)),
+    units.push({ run: r, node: sizeLane({ id: l.key, kind: "lane", w: 300, label: l.lane, sub: l.title, sub2: (eta ? eta + " · " : "") + (live(l.state) ? "active " + ago(r.activity) : "finished " + ago(r.end || r.activity)),
       sub3: gl ? gl.textContent : "", prog: progOf(r), sig: sig,
       sub4: l.runs.length > 1 ? l.runs.length + " runs: " + Object.keys(l.runs.reduce(function (c, x) { c[x.state] = (c[x.state] || 0) + 1; return c; }, {})).map(function (k) { return l.runs.filter(function (x) { return x.state === k; }).length + " " + k; }).join(", ") : "",
       state: l.state, key: l.key, foldDefault: !live(l.state), children: stageNodes(r, l.key) }) });
@@ -1273,7 +1396,7 @@ function buildTree() {
   runs.filter(function (r) { return r.isTrain && (filter === "all" || filter === "day" || live(r.state) || Date.now() - (r.end || r.activity) < RECENT_MS.recent); }).slice(0, 6).forEach(function (r) {
     var key = "run:" + r.id, eta = boxEta(r);
     var tr = r.train || {};
-    units.push({ run: r, node: sizeLane({ id: key, kind: "lane", w: 330, label: trainName(r), sub: (tr.branches ? tr.branches.join(", ") : r.title), sub2: (eta ? eta + " · " : "") + (live(r.state) ? "active " + ago(r.activity) : "finished " + ago(r.end || r.activity)),
+    units.push({ run: r, node: sizeLane({ id: key, kind: "lane", w: 300, label: trainName(r), sub: (tr.branches ? tr.branches.join(", ") : r.title), sub2: (eta ? eta + " · " : "") + (live(r.state) ? "active " + ago(r.activity) : "finished " + ago(r.end || r.activity)),
       sub3: "gate " + checkText(r, tr.gate) + " · smoke " + checkText(r, tr.smoke) + (tr.tip ? " · " + tr.tip.slice(0, 8) : ""), prog: progOf(r),
       sig: r.state + "|" + r.agents.map(function (a) { return a.id + a.state; }).join(","),
       state: r.state, key: key, foldDefault: !live(r.state), children: stageNodes(r, key) }) });
@@ -1294,13 +1417,13 @@ function buildTree() {
       return true;
     }
     var stepsShown = groups.filter(keepStep).length;
-    stepInfo = " · " + stepsShown + " of " + groups.length + " steps";
+    stepInfo = " · " + ofText(stepsShown, groups.length, "steps");
     var cntEl = $("laneCount"); if (cntEl) cntEl.textContent = countText(cntEl.dataset.total, cntEl.dataset.shown);
     var stepNodes = [];
     groups.forEach(function (g, idx) {
       if (!keepStep(g)) return;
       var liveN = g.units.filter(function (u) { return live(u.run.state); }), eta = stepEta(liveN.map(function (u) { return u.run; }), true);
-      var node = sizeTask({ id: "task|" + idx, kind: "task", w: 340, label: g.item.content,
+      var node = sizeTask({ id: "task|" + idx, kind: "task", w: 300, label: g.item.content,
         state: g.ss.status === "in_progress" ? "running" : g.ss.status === "completed" ? "done" : g.ss.status === "ended" ? (g.ss.auto === "failed" ? "failed" : "killed") : "pending",
         sub: (g.units.length ? g.units.length + (g.units.length > 1 ? " lanes" : " lane") : "no lanes yet") + (liveN.length ? " · " + liveN.length + " live" : "") + (eta ? " · " + eta : "") + (g.ss.auto ? " · " + g.ss.note : ""),
         foldDefault: g.ss.status === "completed" && !liveN.length, children: g.units.map(function (u) { return u.node; }) });
@@ -1316,7 +1439,7 @@ function buildTree() {
       while (sj < stepNodes.length && stepNodes[sj].canSlim && stepNodes[sj].foldDefault) sj++;
       if (sj - si >= 2) {
         var run = stepNodes.slice(si, sj);
-        var chip = { id: "grp|" + run[0].label, kind: "group", w: 340, h: SLIM_H, state: "done", foldDefault: true, children: [], members: run.map(function (n) { return n.label; }), memberTasks: run.map(function (n) { return n.task; }) };
+        var chip = { id: "grp|" + run[0].label, kind: "group", w: 300, h: SLIM_H, state: "done", foldDefault: true, children: [], members: run.map(function (n) { return n.label; }), memberTasks: run.map(function (n) { return n.task; }) };
         chip.label = run.length + " done: " + chip.members.join(" · ");
         chip.sub = isFolded(chip) ? "folded: " + run.length + " finished steps" : run.length + " finished steps, listed below";
         // the finished steps are the chip's children, listed under it, so folding the chip folds exactly those and nothing beside it
@@ -1328,7 +1451,7 @@ function buildTree() {
     if (filter === "live") other = other.filter(function (u) { return live(u.run.state); });
     if (filter === "attention") other = other.filter(function (u) { return u.run.state === "failed" || u.run.state === "killed" || u.run.state === "idle"; });
     if (other.length) {
-      var on = sizeTask({ id: "task|other", kind: "task", w: 340, label: "Other work (runs no task step names)", state: other.some(function (u) { return live(u.run.state); }) ? "running" : "done",
+      var on = sizeTask({ id: "task|other", kind: "task", w: 300, label: "Other work (runs no task step names)", state: other.some(function (u) { return live(u.run.state); }) ? "running" : "done",
         sub: other.length + (other.length > 1 ? " lanes" : " lane"), foldDefault: false, children: other.map(function (u) { return u.node; }) });
       tag(on, "__other"); root.children.push(on);
     }
@@ -1338,11 +1461,11 @@ function buildTree() {
     var cntEl0 = $("laneCount"); if (cntEl0) cntEl0.textContent = countText(cntEl0.dataset.total, cntEl0.dataset.shown);
   }
   var side = (data.side || []).filter(function (a) { return a.state !== "done" || Date.now() - a.activity < RECENT_MS.recent; });
-  if (side.length) root.children.push({ id: "side", kind: "stage", w: 230, h: 38, label: "Side agents", sub: side.length + " started by the lead directly", state: side.some(function (a) { return a.state === "running"; }) ? "running" : "done",
-    foldDefault: false, children: side.slice(0, 10).map(function (a) { return { id: "side|" + a.id, kind: "agent", w: 270, h: 52, below: true, indent: 14, label: a.description || a.id, sub: a.state, state: a.state === "done" ? "done" : a.state, model: a.model, children: [] }; }) });
+  if (side.length) root.children.push({ id: "side", kind: "stage", w: 200, h: 30, label: "Side agents", sub: side.length + " started by the lead directly", state: side.some(function (a) { return a.state === "running"; }) ? "running" : "done",
+    foldDefault: false, children: side.slice(0, 10).map(function (a) { return { id: "side|" + a.id, kind: "agent", w: 250, h: 46, below: true, indent: 14, label: a.description || a.id, sub: a.state, state: a.state === "done" ? "done" : a.state, model: a.model, children: [] }; }) });
   return root;
 }
-var SLIM_H = 32, GAP_X = 40, GAP_Y = 10, CELL_GX = 18, CELL_GY = 10, TOGGLE_R = 12;
+var SLIM_H = 28, GAP_X = 36, GAP_Y = 8, CELL_GX = 14, CELL_GY = 8, TOGGLE_R = 10;
 function foldable(n) { return n.children.length > 0 || !!n.canSlim || n.kind === "group"; }
 // consecutive leaf siblings of the same kind and size share one grid segment; anything with visible children is its own segment
 function segmentsOf(kids) {
@@ -1444,8 +1567,19 @@ function wrapLines(t, w, max, cw) {
 }
 function badgeEl(model, x, y, wd) {
   var mb = sv("g", { "class": "mb m-" + famOf(model) + (bareModel(model) ? " bare" : ""), transform: "translate(" + x + "," + y + ")" });
-  mb.appendChild(sv("rect", { width: wd, height: 17, rx: 5 })); mb.appendChild(sv("text", { x: wd / 2, y: 12.5, "data-fit": wd - 8 }, modelName(model)));
+  mb.appendChild(sv("rect", { width: wd, height: 16, rx: 4 })); mb.appendChild(sv("text", { x: wd / 2, y: 11.5, "data-fit": wd - 8 }, modelName(model)));
   return mb;
+}
+// the status mark in a box's left gutter: a pulsing dot (running), dot (idle, failed), tick (done), square (stopped), ring (pending)
+var PX = 28;
+function glyph(state, y) {
+  var g = sv("g", { "class": "sg " + (state || "pending"), transform: "translate(15," + y + ")" });
+  if (state === "running") { g.appendChild(sv("circle", { "class": "halo", r: 6.5 })); g.appendChild(sv("circle", { r: 3.5 })); }
+  else if (state === "done") g.appendChild(sv("path", { d: "M-4,0.3 L-1.3,3 L4,-2.8" }));
+  else if (state === "killed" || state === "stopped") g.appendChild(sv("rect", { x: -3.5, y: -3.5, width: 7, height: 7, rx: 1.5 }));
+  else if (state === "failed" || state === "idle") g.appendChild(sv("circle", { r: 4 }));
+  else g.appendChild(sv("circle", { "class": "hollow", r: 3.8 }));
+  return g;
 }
 var KIND_WORD = { lead: "Lead", advisor: "Advisor", task: "Task step", lane: "Lane", stage: "Stage", agent: "Agent", helper: "Helper" };
 function nodeLabel(n) {
@@ -1459,66 +1593,57 @@ function nodeEl(n) {
   var g = sv("g", { "class": "tn " + n.kind + " " + (n.state || "") + (n.loop ? " loop" : "") + (n.slim ? " slim" : ""), transform: "translate(" + n.x + "," + n.y + ")",
     tabindex: "0", role: "button", "data-key": "n:" + n.id, "aria-label": nodeLabel(n) });
   if (foldable(n)) g.setAttribute("aria-expanded", isFolded(n) ? "false" : "true");
-  g.appendChild(sv("title", {}, n.label + (n.sub ? "\n" + n.sub : "") + (n.sub2 ? "\n" + n.sub2 : "")));
-  g.appendChild(sv("rect", { "class": "box", width: n.w, height: n.h, rx: 11 }));
-  g.appendChild(sv("rect", { "class": "stripe", x: 4, y: n.h < 40 ? 7 : 10, width: 5, height: n.h - (n.h < 40 ? 14 : 20), rx: 2.5 }));
-  var px = 20, W = n.w - px - 14;
+  g.appendChild(sv("title", {}, n.label + (n.state ? " (" + (n.state === "killed" ? "stopped" : n.state) + ")" : "") + (n.sub ? "\n" + n.sub : "") + (n.sub2 ? "\n" + n.sub2 : "")));
+  g.appendChild(sv("rect", { "class": "box", x: 0.5, y: 0.5, width: n.w - 1, height: n.h - 1, rx: 8 }));
+  // every text line starts at PX; the status mark sits in the gutter to its left
+  var px = PX, W = n.w - px - 12;
   function T(cls, x, y, txt, max, extra) {
     var a = Object.assign({ "class": cls, x: x, y: y }, extra || {});
     if (max) a["data-fit"] = Math.max(10, max);
     var t = sv("text", a, max ? cut(txt, max, 4) : txt); g.appendChild(t); return t;
   }
   if (n.slim || n.kind === "group") {
-    // one line: the title cut to the measured width, and a small DONE mark
-    var mw = 42, mk = sv("g", { "class": "sp sm done", transform: "translate(" + (n.w - 12 - mw) + "," + (n.h / 2 - 8) + ")" });
-    mk.appendChild(sv("rect", { width: mw, height: 16, rx: 8 })); mk.appendChild(sv("text", { x: mw / 2, y: 11.5 }, "DONE"));
-    g.appendChild(mk);
+    g.appendChild(glyph("done", n.h / 2));
     // an expanded group is only a header for the steps listed under it, so it does not repeat their titles
-    T("t3", px, n.h / 2 + 4.5, n.kind === "group" && !isFolded(n) ? n.members.length + " finished steps, listed below" : n.label, W - mw - 6);
-  } else if (n.kind === "lead") {
-    T("t", px, 27, "LEAD");
-    if (n.model) g.appendChild(badgeEl(n.model, n.w - 92, 12, 78));
-    T("s st", px, 47, n.sub, W);
-    wrapLines(n.sub2, W, 2, 6.8).forEach(function (ln, i) { T("m", px, 68 + i * 16, ln, W); });
+    T("t3", px, n.h / 2 + 4, n.kind === "group" && !isFolded(n) ? n.members.length + " finished steps, listed below" : n.label, W);
+  } else if (n.kind === "lead" || n.kind === "advisor") {
+    g.appendChild(glyph(n.kind === "lead" && n.state !== "running" ? "pending" : n.state, 20));
+    T("t", px, 24.5, n.kind === "lead" ? "Lead" : "Advisor");
+    if (n.model) g.appendChild(badgeEl(n.model, n.w - 12 - 64, 12, 64));
+    T("s st", px, 42, n.sub, W);
+    wrapLines(n.sub2, W, 2, 6.3).forEach(function (ln, i) { T("m", px, 60 + i * 15, ln, W); });
   } else if (n.kind === "task") {
-    var word = n.state === "running" ? "IN PROGRESS" : n.state === "done" ? "DONE" : n.state === "failed" ? "FAILED" : n.state === "killed" ? "STOPPED" : "PENDING", tpw = Math.round(word.length * 7.2 + 18);
-    (n.lines || wrapLines(n.label, W, 2, 7.6)).forEach(function (ln, i) { T("t2", px, 24 + i * 17, ln, W); });
-    var tp = sv("g", { "class": "sp " + n.state, transform: "translate(" + (n.w - 14 - tpw) + "," + (n.h - 30) + ")" });
-    tp.appendChild(sv("rect", { width: tpw, height: 20, rx: 10 })); tp.appendChild(sv("text", { x: tpw / 2, y: 14 }, word));
-    g.appendChild(tp);
-    T("s", px, n.h - 13, n.sub, W - tpw - 8);
+    g.appendChild(glyph(n.state, 19));
+    (n.lines || wrapLines(n.label, W, 2, 7.0)).forEach(function (ln, i) { T("t2", px, 23 + i * 16, ln, W); });
+    T("s", px, n.h - 12, n.sub, W);
   } else if (n.kind === "lane") {
-    var pw = Math.round(String(n.state).length * 7.2 + 18);
-    T("t", px, 28, n.label, W - pw - 10);
-    var sp = sv("g", { "class": "sp " + n.state, transform: "translate(" + (n.w - 14 - pw) + ",12)" });
-    sp.appendChild(sv("rect", { width: pw, height: 20, rx: 10 })); sp.appendChild(sv("text", { x: pw / 2, y: 14 }, String(n.state).toUpperCase()));
-    g.appendChild(sp);
-    (n.rows || []).forEach(function (r) { T(r.cls, px, r.y, r.t, r.cls === "g" ? W + 6 : W); });
+    g.appendChild(glyph(n.state, 19));
+    T("t", px, 23.5, n.label, W);
+    (n.rows || []).forEach(function (r) { T(r.cls, px, r.y, r.t, W); });
     if (n.prog) {
-      g.appendChild(sv("rect", { x: px, y: n.h - 9, width: W, height: 4, rx: 2, fill: "var(--panel2)" }));
-      g.appendChild(sv("rect", { x: px, y: n.h - 9, width: Math.round(W * n.prog.frac), height: 4, rx: 2, fill: n.prog.late ? "var(--idle)" : "var(--run)" }));
+      g.appendChild(sv("rect", { x: px, y: n.h - 8, width: W, height: 3, rx: 1.5, fill: "var(--line)" }));
+      g.appendChild(sv("rect", { x: px, y: n.h - 8, width: Math.round(W * n.prog.frac), height: 3, rx: 1.5, fill: n.prog.late ? "var(--idle)" : "var(--run)" }));
     }
   } else if (n.kind === "stage") {
     var cnt = String(n.children.length);
-    T("t2", px, n.h / 2 + 5, n.label, W - cnt.length * 8 - 14);
-    T("s", n.w - 14, n.h / 2 + 5, cnt, 0, { "text-anchor": "end" });
-  } else if (n.kind === "advisor") {
-    T("t", px, 26, "ADVISOR");
-    if (n.model) g.appendChild(badgeEl(n.model, n.w - 84, 10, 70));
-    T("s st", px, 46, n.sub, W);
-    wrapLines(n.sub2, W, 2, 6.8).forEach(function (ln, i) { T("m", px, 64 + i * 15, ln, W); });
+    g.appendChild(glyph(n.state, n.h / 2));
+    var cx = n.w - (foldable(n) ? 16 : 12);
+    T("t2", px, n.h / 2 + 4.5, n.label, cx - px - cnt.length * 8 - 6);
+    T("cnt", cx, n.h / 2 + 4.5, cnt, 0, { "text-anchor": "end" });
   } else if (n.kind === "helper") {
-    T("t3", px, 16, n.label, W - (n.model ? 66 : 4));
+    g.appendChild(glyph(n.state, 13));
+    T("t3", px, 17, n.label, W - (n.model ? 62 : 0));
     T("s", px, 29, n.sub, W);
-    if (n.model) g.appendChild(badgeEl(n.model, n.w - 72, 4, 60));
+    if (n.model) g.appendChild(badgeEl(n.model, n.w - 12 - 56, 5, 56));
   } else {
-    T("t2", px, 22, n.label, W - (n.model ? 80 : 4));
-    if (n.model) g.appendChild(badgeEl(n.model, n.w - 86, 8, 72));
-    T("s", px, 41, n.sub, W);
+    g.appendChild(glyph(n.state, 17));
+    T("t2", px, 21, n.label, W - (n.model ? 68 : 0));
+    if (n.model) g.appendChild(badgeEl(n.model, n.w - 12 - 62, 8, 62));
+    T("s", px, 37, n.sub, W);
   }
   if (foldable(n)) {
-    var tg = sv("g", { "class": "tg", transform: "translate(" + (n.w + 1) + "," + (n.h / 2) + ")" });
-    tg.appendChild(sv("circle", { "class": "hit", r: n.h < 40 ? 16 : 28 })); tg.appendChild(sv("circle", { r: n.h < 40 ? 9 : 10 })); tg.appendChild(sv("text", { y: 4.5 }, isFolded(n) ? "+" : "−"));
+    var tg = sv("g", { "class": "tg", transform: "translate(" + n.w + "," + (n.h / 2) + ")" });
+    tg.appendChild(sv("circle", { "class": "hit", r: n.h < 40 ? 16 : 24 })); tg.appendChild(sv("circle", { r: 8 })); tg.appendChild(sv("text", { y: 4 }, isFolded(n) ? "+" : "\u2212"));
     g.appendChild(tg);
   }
   g.__node = n;
@@ -1916,7 +2041,7 @@ function afterLayDrag() {
 }
 function wirePanel(p) {
   var h2 = p.querySelector("h2"); if (!h2 || p.__lay) return;
-  var id = p.id, name = h2.textContent;
+  var id = p.id, name = h2.textContent.trim();
   panelIds.push(id); panelName[id] = name;
   h2.id = id + "Title";
   var body = h("div", "pbody"); body.id = id + "Body";
@@ -2010,6 +2135,7 @@ function wirePanel(p) {
   panelEls().forEach(wirePanel);
   loadLayout();
   applyLayout();
+  $("layoutReset").appendChild(icon("reset"));
   $("layoutReset").addEventListener("click", resetLayout);
   var d = $("colDiv");
   d.addEventListener("pointerdown", function (e) {
@@ -2061,7 +2187,8 @@ function ageText(sec) {
 }
 function setMeta() {
   var m = clear($("meta")), age = Math.round((Date.now() - data.generated) / 1000);
-  m.appendChild(document.createTextNode((data.project || "").split(/[\\/]/).filter(Boolean).pop() + " \u00b7 session " + (data.session || "none").slice(0, 8) + " \u00b7 updated "));
+  m.title = "Session " + (data.session || "none");
+  m.appendChild(document.createTextNode((data.project || "").split(/[\\/]/).filter(Boolean).pop() + " \u00b7 updated "));
   m.appendChild(h("span", "age" + (age * 1000 > STALE_MS ? " stale" : ""), ageText(age)));
   if (pausedHint) m.appendChild(h("span", "age stale", " \u00b7 paused while hidden"));
 }
@@ -2098,7 +2225,8 @@ function poll() {
 function setTheme(t) {
   theme = t;
   if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
-  $("themeBtn").textContent = "Theme: " + t;
+  var tb = clear($("themeBtn")), nextT = t === "auto" ? "light" : t === "light" ? "dark" : "auto";
+  tb.appendChild(icon(t)); tb.title = "Theme: " + t + " (click for " + nextT + ")"; tb.setAttribute("aria-label", "Theme: " + t);
   try { localStorage.setItem("dash-theme", t); } catch (e) {}
 }
 $("themeBtn").addEventListener("click", function () { setTheme(theme === "auto" ? "light" : theme === "light" ? "dark" : "auto"); });

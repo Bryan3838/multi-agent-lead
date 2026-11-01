@@ -42,7 +42,7 @@ Everything read from the records is treated as untrusted text: clipped, stripped
 - **Burn and limits**: tokens of agents that finished in the last hour and 5 hours (Claude Code's own run totals), what live agents have written so far (output tokens, read from their transcripts), tokens by model and the most expensive lanes. With `--usage-file` it also fits a rate to the percentages the running collector has seen: it needs about 10 minutes of samples, and the history is in memory only, so restarting `run.py` resets it.
 - **Ready to merge**: finished lanes whose branch has commits not in the integration branch, with whether a train already holds them, whether they are pushed, and the final check result.
 - **Side agents**: subagents the lead started directly with the Agent tool, outside a workflow (`<session>/subagents/agent-*.meta.json`).
-- **Model mix**: opus, sonnet, haiku and other agents working now and in the last 24 hours. The same colours mark the model badge on every agent. "default" means the record names no model.
+- **Model mix**: opus, sonnet, haiku and other agents working now and in the last 24 hours. Each agent's model is a small neutral badge; the bars use one shade per family, Opus in the accent colour, and hovering a segment gives its number. "default" means the record names no model.
 - Each running agent shows its latest tool call ("now") and a red "repeating" badge when 4 or more of its last 10 calls were identical.
 - The top bar shows how old the notes file is (`--handoff-file`, default `HANDOFF.md`, `NOTES.md` or `docs/HANDOFF.md`).
 
@@ -52,7 +52,7 @@ By default the newest session that has workflow runs; if none has, the newest se
 
 ## Agent usage
 
-Click an agent (a box in the tree, or a row in a lane's detail) for its own view. Its usage is a small table with two columns, **Now** and **Typical for this kind of agent**, and four rows: output tokens, tool calls, running time and context size. Numbers are right-aligned. Under each "Now" number that has a typical value there is a thin bar and "N% of typical", amber past 100%.
+Click an agent (a box in the tree, or a row in a lane's detail) for its own view. Its usage is a small table with two columns, **Now** and **Typical** (for this kind of agent), and four rows: output tokens, tool calls, running time and context size. Numbers are right-aligned. Under each "Now" number that has a typical value there is a thin bar and "N% of typical", amber past 100%.
 - **Output tokens** is what the agent has written so far (live agents only, read from its transcript), so it has no typical value: finished agents do not record it. **Tool calls** counts its tool uses.
 - **Context size** is how big the agent's conversation has grown. The run summary's own "tokens" figure is exactly this (the context size at the end of the run, not tokens spent), so a live agent's context compares fairly with the typical figure. The Burn panel's "context tokens" are sums of these, a rough proxy for work, not a bill.
 - **Typical** is the median of finished agents in the same workflow and stage (shown once there are 3 or more).
@@ -78,7 +78,7 @@ python snapshot_tree.py --project <repo> --title "Project status" --out tree.htm
 
 ## States
 
-Agent and chip colours: running (blue, pulsing), done (green), failed (red, error text shown, e.g. a usage limit), idle (amber: running but quiet for `--idle-minutes`), stopped (the run was killed), pending or skipped (dashed). A lane takes the state of its newest run; older runs of the same lane are summarised on the card and listed in the drawer. A run counts as failed when any agent errored, even if the run itself finished. Runs with no summary file and no live agent activity show as idle (for example when the session that launched them died).
+State marks: running (pulsing accent dot), done (green tick), failed (red dot and outline, error text shown, e.g. a usage limit), idle (amber dot and outline: running but quiet for `--idle-minutes`), stopped (grey square: the run was killed), pending or skipped (hollow ring, dashed box). Colour is kept to these small marks; box outlines are coloured only for failed, idle and repeating agents. A lane takes the state of its newest run; older runs of the same lane are summarised on the card and listed in the drawer. A run counts as failed when any agent errored, even if the run itself finished. Runs with no summary file and no live agent activity show as idle (for example when the session that launched them died).
 
 A run whose workflow name contains `train` goes to the **Merge train** panel instead of a lane: its branches (queued, then merged), gate and smoke state. Gate and smoke are read from `result.gate` / `result.smoke` (`ok`, `allFail` or `failed` fields); the train's `args.branches` and `args.k` supply the list and number. Click a lane or train box for the drawer: latest result text (`plainWords` or `summary`), tip, commits, open issues, agents, and the resume command shape `Workflow({scriptPath: "...", resumeFromRunId: "wf_..."})`.
 
@@ -160,7 +160,10 @@ Burn and limits (rewritten): one bar each for the 5-hour window and the weekly l
 
 The Burn and limits panel no longer repeats the usage bars (they are in the header): it shows only a burn forecast line when one is reliable, what is running now, finished tokens, the model mix and the most expensive lanes.
 
-The filter tabs also filter the lead's task-list steps in the tree: Live only keeps the in-progress steps and steps with a live lane, Needs attention keeps open Decision / Needs a person steps and steps with a failed, stopped or idle lane, and the other tabs keep every step.
+The filter tabs also filter the lead's task-list steps in the tree: Live keeps the in-progress steps and steps with a live lane, Attention keeps open Decision / Needs a person steps and steps with a failed, stopped or idle lane, and the other tabs keep every step.
 
-Layout and density: the side column's panels can be reordered (drag grip, up and down buttons, Alt+Arrow), resized by their bottom edge (Shift+Arrow), folded, and the column's width set by a divider; "Reset layout" restores the default; the layout is saved in localStorage and survives live redraws. Finished task steps draw as one-line boxes (consecutive ones merge into a "N done" chip), the tree fits to its content, and on desktop widths the page fills the window height and only the tree box and the side column scroll. A live run with no ETA says "no ETA yet (first run of this kind)"; an ETA needs 2 finished agents of the same phase.
+Layout and density: the side column's panels can be reordered (drag grip, up and down buttons, Alt+Arrow), resized by their bottom edge (Shift+Arrow), folded, and the column's width set by a divider; "Reset layout" restores the default; the layout is saved in localStorage and survives live redraws. Finished task steps draw as one-line boxes (consecutive ones merge into a "N done" chip), the tree fits to its content, and on desktop widths the page fills the window height and only the tree box and the side column scroll. A live run with no ETA says "no ETA yet"; an ETA needs 2 finished agents of the same phase.
 
+## Look
+
+The page follows the Claude app's look: warm neutrals with one terracotta accent (dark and light themes), a 4/8/12/16/24 px spacing scale, flat side sections with a count beside each name, and line icons. Detail that used to be spelled out on the page (sources, full reset times, exact per-model numbers, what a filter keeps) is in tooltips. The header holds the lane counts and page tools; the row above the tree holds the filters, the lane and step counts and the usage meters.
