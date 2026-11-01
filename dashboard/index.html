@@ -245,6 +245,8 @@ main{padding:10px 16px 24px;display:grid;grid-template-columns:minmax(0,1fr);gap
 #plan .task:hover{background:var(--panel2)}#plan .task.sel{background:var(--run-bg)}
 #plan .task .box{flex:none;width:16px;height:16px;border-radius:50%;border:2px solid var(--line);margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1}
 #plan .task.completed{color:var(--muted);text-decoration:line-through}#plan .task.completed .box{background:var(--done);border-color:var(--done);color:var(--bg)}
+#plan .task.ended{color:var(--muted)}#plan .task.ended .box{border-color:var(--stop);color:var(--stop)}
+#plan .stalehint{font-size:var(--fs-s);color:var(--idle);font-weight:700;padding:2px 0 4px}
 #plan .task.in_progress{font-weight:600}#plan .task.in_progress .box{border-color:var(--run);background:var(--run-bg)}
 #plan .task span:nth-child(2){flex:1;overflow-wrap:anywhere}#plan .task .badge{flex:none;white-space:nowrap}
 #plan .taskagent{display:flex;gap:6px;align-items:center;font-size:var(--fs-s);padding:1px 4px 1px 24px;border-radius:4px;min-width:0}
@@ -619,6 +621,25 @@ function stepRuns(text) {
   var tokens = wordSet(text);
   return (data.runs || []).filter(function (r) { return live(r.state) && matchRun(r, tokens); });
 }
+// Derived and display-only: a step the lead left open whose named runs have all ended shows as ended; the lead's own value stays in data.plan
+var STEP_END = { done: 1, failed: 1, killed: 1 };
+function stepState(item) {
+  var none = { status: item.status, auto: "", note: "" };
+  if (item.status !== "in_progress" && item.status !== "pending") return none;
+  var tokens = wordSet(item.content), newest = {}, n = 0;
+  (data.runs || []).forEach(function (r) {
+    if (!matchRun(r, tokens)) return;
+    var k = r.isTrain ? "run:" + r.id : r.session + "|" + r.lane;
+    if (!newest[k] || (r.start || 0) > (newest[k].start || 0)) newest[k] = r;
+  });
+  var rs = Object.keys(newest).map(function (k) { n++; return newest[k]; });
+  if (!n) return none;
+  var open = rs.some(function (r) { return !STEP_END[r.state] || live(r.state) || (r.agents || []).some(function (a) { return a.state === "running" || a.state === "idle"; }); });
+  if (open) return none;
+  if (rs.some(function (r) { return r.state === "failed"; })) return { status: "ended", auto: "failed", note: "lane failed" };
+  if (rs.some(function (r) { return r.state === "killed"; })) return { status: "ended", auto: "stopped", note: "stopped" };
+  return { status: "completed", auto: "finished", note: "lane finished" };
+}
 function stepEta(hits, noCount) {
   if (!hits.length) return "";
   var known = hits.filter(function (r) { return r.eta && r.eta.known; });
@@ -629,7 +650,7 @@ function stepEta(hits, noCount) {
 function taskFor(r) {
   var items = (data.plan && data.plan.items) || [], tokens;
   var hit = items.filter(function (i) { return matchRun(r, wordSet(i.content)); });
-  hit.sort(function (x, y) { return (x.status === "completed") - (y.status === "completed"); });
+  hit.sort(function (x, y) { return (stepState(x).status === "completed") - (stepState(y).status === "completed"); });
   return hit[0] ? hit[0].content : "";
 }
 function drawPlan() {
@@ -637,13 +658,14 @@ function drawPlan() {
   var p = data.plan, items = (p && p.items) || [], box = clear($("plan"));
   $("planPanel").hidden = !items.length;
   if (!items.length) return;
-  var done = items.filter(function (i) { return i.status === "completed"; }).length;
-  items.forEach(function (i) {
-    var hits = i.status === "completed" ? [] : stepRuns(i.content), eta = stepEta(hits);
-    var trow = h("div", "task " + i.status + (focus.step === i.content ? " sel" : ""), "", [h("span", "box", i.status === "completed" ? "✓" : ""), h("span", "", i.content),
-      eta ? h("span", "badge eta", eta) : null]);
+  var sts = items.map(stepState), done = sts.filter(function (x) { return x.status === "completed"; }).length, auto = sts.filter(function (x) { return x.auto; }).length;
+  if (auto) box.appendChild(h("div", "stalehint", auto + (auto === 1 ? " step looks" : " steps look") + " stale: its lane has ended but the list was not updated"));
+  items.forEach(function (i, ix) {
+    var ss = sts[ix], hits = ss.status === "completed" || ss.auto ? [] : stepRuns(i.content), eta = stepEta(hits);
+    var trow = h("div", "task " + ss.status + (focus.step === i.content ? " sel" : ""), "", [h("span", "box", ss.status === "completed" ? "✓" : ss.auto === "failed" ? "\u2715" : ss.auto === "stopped" ? "\u25a0" : ""), h("span", "", i.content),
+      eta ? h("span", "badge eta", eta) : ss.auto ? h("span", "badge", ss.note) : null]);
     trow.title = "Hover to highlight in the tree, click to pin and move there";
-    clickable(trow, function () { selectStep(i.content); }, "t:" + i.content, i.content + ", " + i.status.replace("_", " ") + (focus.step === i.content ? ", pinned" : ""));
+    clickable(trow, function () { selectStep(i.content); }, "t:" + i.content, i.content + ", " + ss.status.replace("_", " ") + (ss.auto ? ", " + ss.note : "") + (focus.step === i.content ? ", pinned" : ""));
     trow.addEventListener("focus", function () { focus.hover = i.content; applyHighlight(); });
     trow.addEventListener("blur", function () { focus.hover = ""; applyHighlight(); });
     trow.addEventListener("mouseenter", function () { focus.hover = i.content; applyHighlight(); });
@@ -1030,7 +1052,7 @@ function metaDrawer(kind) {
     row("Last said", ld.said ? "\u201c" + ld.said + "\u201d" : "");
     row("Last action", ld.now ? plainTool(ld.now) : "");
     var items = (data.plan && data.plan.items) || [];
-    if (items.length) row("Task list", items.map(function (i) { return (i.status === "completed" ? "\u2713 " : i.status === "in_progress" ? "\u25b6 " : "\u25cb ") + i.content; }).join("\n"));
+    if (items.length) row("Task list", items.map(function (i) { var ss = stepState(i); return (ss.status === "completed" ? "\u2713 " : ss.status === "ended" ? "\u25a0 " : ss.status === "in_progress" ? "\u25b6 " : "\u25cb ") + i.content + (ss.auto ? " (" + ss.note + ")" : ""); }).join("\n"));
   }
   if (kind !== "advisor") d.appendChild(box);
   document.body.classList.add("open");
@@ -1259,15 +1281,15 @@ function buildTree() {
   var items = (data.plan && data.plan.items) || [];
   function tag(n, t) { n.task = t; n.children.forEach(function (c) { tag(c, t); }); }
   if (items.length) {
-    var groups = items.map(function (i) { return { item: i, tokens: wordSet(i.content), units: [] }; }), other = [];
+    var groups = items.map(function (i) { return { item: i, ss: stepState(i), tokens: wordSet(i.content), units: [] }; }), other = [];
     units.forEach(function (u) {
       var g = groups.filter(function (x) { return matchRun(u.run, x.tokens); })[0];
       (g ? g.units : other).push(u);
     });
     // the tabs filter the lead's steps too: Live only keeps what is in progress or has a live lane; Needs attention keeps open decisions and steps that need a person, or have a failed, stopped or idle lane
     function keepStep(g) {
-      var isOpen = g.item.status !== "completed";
-      if (filter === "live") return g.item.status === "in_progress" || g.units.some(function (u) { return live(u.run.state); });
+      var isOpen = g.ss.status !== "completed";
+      if (filter === "live") return g.ss.status === "in_progress" || g.units.some(function (u) { return live(u.run.state); });
       if (filter === "attention") return g.units.some(function (u) { return u.run.state === "failed" || u.run.state === "killed" || u.run.state === "idle"; }) || (isOpen && /^(decision|needs a person|needs you)/i.test(g.item.content));
       return true;
     }
@@ -1279,12 +1301,12 @@ function buildTree() {
       if (!keepStep(g)) return;
       var liveN = g.units.filter(function (u) { return live(u.run.state); }), eta = stepEta(liveN.map(function (u) { return u.run; }), true);
       var node = sizeTask({ id: "task|" + idx, kind: "task", w: 340, label: g.item.content,
-        state: g.item.status === "in_progress" ? "running" : g.item.status === "completed" ? "done" : "pending",
-        sub: (g.units.length ? g.units.length + (g.units.length > 1 ? " lanes" : " lane") : "no lanes yet") + (liveN.length ? " · " + liveN.length + " live" : "") + (eta ? " · " + eta : ""),
-        foldDefault: g.item.status === "completed" && !liveN.length, children: g.units.map(function (u) { return u.node; }) });
+        state: g.ss.status === "in_progress" ? "running" : g.ss.status === "completed" ? "done" : g.ss.status === "ended" ? (g.ss.auto === "failed" ? "failed" : "killed") : "pending",
+        sub: (g.units.length ? g.units.length + (g.units.length > 1 ? " lanes" : " lane") : "no lanes yet") + (liveN.length ? " · " + liveN.length + " live" : "") + (eta ? " · " + eta : "") + (g.ss.auto ? " · " + g.ss.note : ""),
+        foldDefault: g.ss.status === "completed" && !liveN.length, children: g.units.map(function (u) { return u.node; }) });
       // a finished step with no live lane folds to one slim line; unfolding it shows the full box and its lanes
       tag(node, g.item.content);
-      if (g.item.status === "completed") { node.canSlim = true; if (isFolded(node)) { node.slim = true; node.h = SLIM_H; } }
+      if (g.ss.status === "completed") { node.canSlim = true; if (isFolded(node)) { node.slim = true; node.h = SLIM_H; } }
       stepNodes.push(node);
     });
     // two or more slim steps in a row fold further into one chip ("3 done: ..."); unfolding it lists them under it
@@ -1459,7 +1481,7 @@ function nodeEl(n) {
     T("s st", px, 47, n.sub, W);
     wrapLines(n.sub2, W, 2, 6.8).forEach(function (ln, i) { T("m", px, 68 + i * 16, ln, W); });
   } else if (n.kind === "task") {
-    var word = n.state === "running" ? "IN PROGRESS" : n.state === "done" ? "DONE" : "PENDING", tpw = Math.round(word.length * 7.2 + 18);
+    var word = n.state === "running" ? "IN PROGRESS" : n.state === "done" ? "DONE" : n.state === "failed" ? "FAILED" : n.state === "killed" ? "STOPPED" : "PENDING", tpw = Math.round(word.length * 7.2 + 18);
     (n.lines || wrapLines(n.label, W, 2, 7.6)).forEach(function (ln, i) { T("t2", px, 24 + i * 17, ln, W); });
     var tp = sv("g", { "class": "sp " + n.state, transform: "translate(" + (n.w - 14 - tpw) + "," + (n.h - 30) + ")" });
     tp.appendChild(sv("rect", { width: tpw, height: 20, rx: 10 })); tp.appendChild(sv("text", { x: tpw / 2, y: 14 }, word));
