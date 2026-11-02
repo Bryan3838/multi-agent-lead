@@ -67,6 +67,9 @@ def build(snap, title):
     usage = [{"label": clean(w.get("label"), 40), "percent": num(w.get("percent")), "resets": clean(w.get("resets"), 40)}
              for w in ((snap.get("usage") or {}).get("windows") or [])]
     burn = snap.get("burn") or {}
+    slots_data = dict(snap.get("slots") or snap.get("studio") or {})
+    if slots_data.get("label"):
+        slots_data["label"] = clean(slots_data["label"], 20)
     return {
         "title": clean(title, 60), "generated": int(time.time() * 1000), "usage": usage,
         "plan": [{"content": clean(i.get("content"), 140), "status": clean(i.get("status"), 14)} for i in ((snap.get("plan") or {}).get("items") or [])],
@@ -74,7 +77,8 @@ def build(snap, title):
         "runs": runs,
         "ready": [{"lane": clean(r.get("lane"), 40), "title": clean(r.get("title"), 140), "branch": clean(r.get("branch"), 40), "ahead": r.get("ahead"),
                    "behind": r.get("behind"), "shipOk": r.get("shipOk"), "pushed": r.get("pushed")} for r in (snap.get("ready") or [])[:15]],
-        "studio": snap.get("studio") or {},
+        "slots": slots_data,
+        "studio": slots_data,  # copy of "slots" for one version, so an older page still renders it
         "burn": {"liveAgents": int(num(burn.get("liveAgents"))), "families": burn.get("byFamily5h") or {}},
     }
 
@@ -137,7 +141,7 @@ function render(){
  if(snap.ready.length){root.appendChild(el('h2',null,'Ready to merge'));snap.ready.forEach(function(r){var d=el('details','card');d.dataset.key=key('ready',r.lane);var s=el('summary'),row=el('div','row');row.appendChild(el('b',null,r.lane));
   row.appendChild(el('span','state',r.shipOk===true?'ship OK':r.shipOk===false?'not OK':'unchecked'));s.appendChild(row);s.appendChild(el('div','sub',r.title));d.appendChild(s);
   var b=el('div','body');b.appendChild(el('div',null,'Branch '+r.branch+' · '+(r.ahead==null?'?':r.ahead)+' ahead, '+(r.behind==null?'?':r.behind)+' behind · '+(r.pushed?'pushed':'not pushed')));d.appendChild(b);root.appendChild(d)})}
- if(snap.studio&&snap.studio.limit!=null){root.appendChild(el('h2',null,'Studio'));root.appendChild(el('div','box',snap.studio.count+' of '+snap.studio.limit+' windows open'))}
+ var sl=snap.slots||snap.studio;if(sl&&sl.limit!=null){root.appendChild(el('h2',null,sl.label||'Slots'));root.appendChild(el('div','box',(sl.count==null?'?':sl.count)+' of '+sl.limit+' in use'))}
  if(snap.burn&&snap.burn.liveAgents){root.appendChild(el('h2',null,'Agents'));root.appendChild(el('div','box',snap.burn.liveAgents+' running now'))}
  root.querySelectorAll('details').forEach(function(d){if(open[d.dataset.key])d.open=true});window.scrollTo(0,y);tick()}
 function tick(){var t=document.getElementById('age');if(!t||!liveEl)return;var age=Date.now()-snap.generated;t.textContent='Updated '+ago(snap.generated)+(dbOn?' · live':' · snapshot, reload for newer');

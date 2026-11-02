@@ -17,7 +17,10 @@ It prints a URL (default `http://127.0.0.1:8765/`, next free port if busy). Open
 | `--integration-branch` | Branch lanes are compared with (ahead/behind). Default `main`, else `master`, else the main worktree's branch. |
 | `--lane-field` | Workflow arg that names a lane. Default tries `br`, `branch`, `lane`, `title`, then the workflow name. |
 | `--usage-file` | Optional JSON for the usage bars (below). |
-| `--studio-limit N` | Show the count of running processes named by `--studio-process` (no default: name the process to count; without it the count shows as unknown) against N. |
+| `--slot-limit N` | Show a counter of used slots against N. A slot is a limited resource the project shares between agents, for example browser windows, test devices, licences or app instances. The count is the number of running processes named by `--slot-process` (no default: name the process to count; without it the count shows as unknown). It only displays; it enforces nothing. |
+| `--slot-label NAME` | Name shown next to the counter (default `Slots`; for example `Browsers` or `Test devices`). |
+| `--slot-process NAME` | Process name counted for `--slot-limit`. |
+| `--studio-limit`, `--studio-process` | Deprecated aliases of `--slot-limit` and `--slot-process`; they still work, so an older `.claude/launch.json` keeps running. |
 | `--handoff-file` | Notes file whose age is shown. |
 | `--idle-minutes` | No transcript activity for this long turns a running agent amber "idle" (default 10). |
 | `--port` (0 = stable per project), `--print-port`, `--interval`, `--out-dir`, `--open` | Port, seconds between refreshes (30), where `status.json` goes (a per-project temp folder), open the browser. |

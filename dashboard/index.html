@@ -591,10 +591,11 @@ function drawHeader() {
     hs.title = data.handoff.name + " was last changed " + ago(data.handoff.updated) + (stale ? ", while agents are working" : "");
     aux.push(hs);
   }
-  if (data.studio) {
-    var over = data.studio.count !== null && data.studio.count >= data.studio.limit;
-    var ss = h("span", "stat" + (over ? " bad" : ""), "", [icon("slots"), h("b", "", data.studio.count === null ? "?" : data.studio.count + "/" + data.studio.limit), document.createTextNode(data.studio.label || "slots")]);
-    ss.title = (data.studio.label || "Slots") + " in use, of the limit" + (data.studio.count === null ? " (the count is unknown: no process name was given)" : "");
+  var slots = data.slots || data.studio;
+  if (slots && slots.limit != null) {
+    var over = slots.count != null && slots.count >= slots.limit;
+    var ss = h("span", "stat" + (over ? " bad" : ""), "", [icon("slots"), h("b", "", slots.count == null ? "?" : slots.count + "/" + slots.limit), document.createTextNode(slots.label || "Slots")]);
+    ss.title = (slots.label || "Slots") + " in use, of the limit" + (slots.count == null ? " (the count is unknown: no process name was given)" : "");
     aux.push(ss);
   }
   if (aux.length) { st.appendChild(h("span", "vsep")); aux.forEach(function (x) { st.appendChild(x); }); }

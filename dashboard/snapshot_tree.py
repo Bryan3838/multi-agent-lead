@@ -106,6 +106,8 @@ def build_data(snap, title, cap):
     now = int(time.time() * 1000)
     sessions = {r.get("session") for r in (snap.get("runs") or []) if r.get("session")}
     short = {s: s[:8] for s in sessions}
+    raw_slots = snap.get("slots") or snap.get("studio")
+    slots = {"count": raw_slots.get("count"), "limit": raw_slots.get("limit"), "label": clean(raw_slots.get("label"), 20)} if isinstance(raw_slots, dict) and raw_slots else None
 
     def rk(key):
         key = str(key or "")
@@ -176,7 +178,8 @@ def build_data(snap, title, cap):
                    "end": num(x.get("end"))} for x in (snap.get("ready") or [])[:12]],
         "attention": [{"sev": clean(x.get("sev"), 6), "kind": clean(x.get("kind"), 16), "key": rk(x.get("key")), "lane": clean(x.get("lane"), 50), "text": clean(x.get("text"), 220)}
                       for x in (snap.get("attention") or [])[:25]],
-        "studio": ({"count": (snap["studio"] or {}).get("count"), "limit": snap["studio"].get("limit"), "label": clean(snap["studio"].get("label"), 20)} if snap.get("studio") else None),
+        "slots": slots,
+        "studio": slots,  # copy of "slots" for one version, so an older page still renders it
     }
     return scrub(data)
 

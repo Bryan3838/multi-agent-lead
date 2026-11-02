@@ -22,7 +22,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import live
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # lets python -I status.py find live.py
+import live  # noqa: E402
 
 CTRL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 RUN_ID = re.compile(r"Run ID: (wf_[\w-]+)")
@@ -783,7 +784,7 @@ def collect_git(project, integration, wanted_branches):
     return out
 
 
-# ------------------------------------------------------- usage and studio
+# ------------------------------------------------------- usage and slots
 def pct(value):
     try:
         v = float(value)
@@ -1179,10 +1180,11 @@ def collect(opts):
         gap = now - u["sources"]["app"]
         if gap > 20 * 60000 and now - snap["lead"]["activity"] < 5 * 60000:
             u["appSilent"] = int(gap / 60000)
-    studio = None
-    if opts.studio_limit:
-        studio = {"count": count_processes(opts.studio_process) if opts.studio_process else None, "limit": opts.studio_limit, "label": clip(opts.slot_label, 30)}
-    snap["studio"] = studio
+    slots = None
+    if opts.slot_limit:
+        slots = {"count": count_processes(opts.slot_process) if opts.slot_process else None, "limit": opts.slot_limit, "label": clip(opts.slot_label, 30)}
+    snap["slots"] = slots
+    snap["studio"] = slots  # copy of "slots" for one version, so an older page still renders it
     return snap
 
 
@@ -1201,9 +1203,12 @@ def add_arguments(ap):
     ap.add_argument("--lane-field", default="", help="workflow arg that names a lane (default br, branch, lane, title)")
     ap.add_argument("--plan-usage-history", default="", help="the Claude app's plan-usage-history.json (default: found by searching the app data folders)")
     ap.add_argument("--usage-file", default="", help="usage JSON (default: <claude dir>/dashboard-usage.json, shared by all projects)")
-    ap.add_argument("--studio-limit", type=int, default=0, help="show running Studio processes against this limit")
-    ap.add_argument("--slot-label", default="slots", help="name shown for the --studio-limit counter (for example Studio or browsers)")
-    ap.add_argument("--studio-process", default="", help="process name counted for --studio-limit (required with it; empty shows the count as unknown)")
+    ap.add_argument("--slot-limit", dest="slot_limit", type=int, default=0, help="show the count of used slots (for example browser windows, test devices, licences, app instances) against this limit")
+    ap.add_argument("--slot-label", default="Slots", help="name shown for the slot counter (for example Browsers or Test devices)")
+    ap.add_argument("--slot-process", dest="slot_process", default="", help="process name counted for --slot-limit (required with it; empty shows the count as unknown)")
+    # deprecated aliases, kept so an existing launch.json keeps working
+    ap.add_argument("--studio-limit", dest="slot_limit", type=int, default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+    ap.add_argument("--studio-process", dest="slot_process", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
     ap.add_argument("--idle-minutes", type=float, default=10, help="no transcript activity for this long marks an agent idle")
     ap.add_argument("--claude-dir", default="", help="Claude config dir (default ~/.claude or CLAUDE_CONFIG_DIR)")
     ap.add_argument("--handoff-file", default="", help="notes or handoff file whose age is shown (default: HANDOFF.md, NOTES.md, docs/HANDOFF.md ...)")
