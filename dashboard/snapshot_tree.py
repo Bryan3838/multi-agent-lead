@@ -53,9 +53,14 @@ def scrub(obj):
     return obj
 
 
+def short_hash(v):
+    """A commit hash cut to 10 characters before it is cleaned (a full 40-character hash reads as a secret)."""
+    return clean(str(v or "")[:10], 10)
+
+
 def trim_section(sec, cap):
     return {
-        "name": clean(sec.get("name"), 40), "plain": clean(sec.get("plain"), cap["headline"]), "tip": clean(sec.get("tip"), 10),
+        "name": clean(sec.get("name"), 40), "plain": clean(sec.get("plain"), cap["headline"]), "tip": short_hash(sec.get("tip")),
         "commits": [clean(c, 110) for c in (sec.get("commits") or [])[:6]],
         "issues": [clean(i, 240) for i in (sec.get("issues") or [])[:cap["issues"]]],
         "tests": clean(sec.get("tests"), 240),
@@ -68,10 +73,23 @@ def trim_agent(a):
         "id": clean(a.get("id"), 24), "label": clean(a.get("label"), 70), "phase": clean(a.get("phase"), 40), "model": clean(a.get("model"), 24),
         "state": clean(a.get("state"), 12), "activity": num(a.get("activity")), "started": num(a.get("started")),
         "tokens": num(a.get("tokens")), "tools": num(a.get("tools")), "duration": num(a.get("duration")),
-        "typicalTools": num(a.get("typicalTools")), "typicalTokens": num(a.get("typicalTokens")), "error": clean(a.get("error"), 300), "now": clean(a.get("now"), 140), "said": clean(a.get("said"), 280),
+        "typicalTools": num(a.get("typicalTools")), "typicalTokens": num(a.get("typicalTokens")), "error": clean(a.get("error"), 300), "now": clean(a.get("now"), 140),
+        "nowText": clean(a.get("nowText"), 120), "said": clean(a.get("said"), 280),
         "repeat": num(a.get("repeat")), "outTokens": num(a.get("outTokens")), "typical": num(a.get("typical")),
-        "helpers": [{"desc": clean(h.get("desc"), 60), "model": clean(h.get("model"), 20), "done": bool(h.get("done"))} for h in (a.get("helpers") or [])[:4]],
+        "last": clean(a.get("last"), 160) if a.get("state") not in ("running", "idle") else "",
+        # helpers still working first, so a cut drops finished ones
+        "helpers": [{"desc": clean(h.get("desc"), 60), "model": clean(h.get("model"), 20), "done": bool(h.get("done"))}
+                    for h in sorted(a.get("helpers") or [], key=lambda h: bool(h.get("done")))[:4]],
     }
+
+
+LIVE_FIRST = {"running": 0, "idle": 0, "failed": 1}
+
+
+def keep_agents(agents, n):
+    """The n agents worth keeping: live ones, then failed, then the newest finished; shown in their own order."""
+    ranked = sorted(range(len(agents)), key=lambda i: (LIVE_FIRST.get(agents[i].get("state"), 2), -num(agents[i].get("started"))))
+    return [agents[i] for i in sorted(ranked[:n])]
 
 
 def trim_run(r, short, cap, full):
@@ -88,7 +106,7 @@ def trim_run(r, short, cap, full):
     live_run = r.get("state") in ("running", "idle")
     base.update({
         "phases": [{"title": clean(p.get("title"), 30), "state": clean(p.get("state"), 12), "count": num(p.get("count"))} for p in (r.get("phases") or [])[:8]],
-        "agents": [trim_agent(a) for a in (r.get("agents") or [])[:cap["agents"] if live_run else cap["done_agents"]]],
+        "agents": [trim_agent(a) for a in keep_agents([a for a in (r.get("agents") or []) if isinstance(a, dict)], cap["agents"] if live_run else cap["done_agents"])],
         "headline": clean(r.get("headline"), cap["headline"]),
         "sections": [trim_section(x, cap) for x in (r.get("sections") or [])[:cap["sections"] if live_run else cap["done_sections"]]],
         "logs": [clean(x, 140) for x in (r.get("logs") or [])[-3:]],
@@ -97,14 +115,68 @@ def trim_run(r, short, cap, full):
     if isinstance(r.get("train"), dict):
         t = r["train"]
         base["train"] = {"k": clean(t.get("k"), 12), "branches": [clean(b, 50) for b in (t.get("branches") or [])[:20]], "merged": bool(t.get("merged")),
-                         "tip": clean(t.get("tip"), 10), "conflicts": num(t.get("conflicts")), "gate": clean(t.get("gate"), 10), "smoke": clean(t.get("smoke"), 10),
+                         "tip": short_hash(t.get("tip")), "conflicts": num(t.get("conflicts")), "gate": clean(t.get("gate"), 10), "smoke": clean(t.get("smoke"), 10),
                          "gateNote": clean(t.get("gateNote"), 120)}
     return base
+
+
+def trim_lead(lead, short):
+    if not isinstance(lead, dict):
+        return None
+    adv = lead.get("advisor") or {}
+    return {"session": short.get(lead.get("session"), clean(lead.get("session"), 8)), "model": clean(lead.get("model"), 24), "activity": num(lead.get("activity")),
+            "state": clean(lead.get("state"), 10), "now": clean(lead.get("now"), 120), "nowText": clean(lead.get("nowText"), 120),
+            "said": clean(lead.get("said"), 240), "step": clean(lead.get("step"), 140),
+            "advisor": {"calls": num(adv.get("calls")), "last": clean(adv.get("last"), 30),
+                        "pending": {"since": num((adv.get("pending") or {}).get("since"))} if isinstance(adv.get("pending"), dict) else None}}
+
+
+def live_first(rows, n):
+    """The first n rows, live ones first (then the newest), so a cut never drops work a step still points to."""
+    rows = [r for r in (rows or []) if isinstance(r, dict)]
+    return sorted(rows, key=lambda r: (r.get("state") not in ("running", "idle"), -num(r.get("activity") or r.get("start"))))[:n]
+
+
+def trim_plan(p, short):
+    """A chat's task list with what the evidence says about each step (ids only; the page looks the work up)."""
+    def ids(v, n=12):
+        return [clean(x, 40) for x in (v or [])[:n]]
+
+    def item(i):
+        d = i.get("derived") if isinstance(i.get("derived"), dict) else None
+        out = {"content": clean(i.get("content"), 160), "status": clean(i.get("status"), 14), "since": num(i.get("since")), "doneAt": num(i.get("doneAt"))}
+        if i.get("by"):
+            out["by"] = clean(i.get("by"), 12)
+        if d:
+            out["derived"] = {"status": clean(d.get("status"), 12), "note": clean(d.get("note"), 60), "live": num(d.get("live")),
+                              "runs": ids(d.get("runs")), "side": ids(d.get("side"), 6), "tasks": ids(d.get("tasks"), 6)}
+        return out
+    o = p.get("other") if isinstance(p.get("other"), dict) else {}
+    items = [i for i in (p.get("items") or []) if isinstance(i, dict)]
+    if len(items) > 14:
+        # a long list keeps every open step and fills up with the newest done ones, in the list's own order
+        keep = [k for k, i in enumerate(items) if i.get("status") != "completed"][:14]
+        done = sorted((k for k, i in enumerate(items) if i.get("status") == "completed"), key=lambda k: -num(items[k].get("doneAt")))
+        items = [items[k] for k in sorted(keep + done[:14 - len(keep)])]
+    out = {"items": [item(i) for i in items], "updated": clean(p.get("updated"), 30),
+           "done": [{"content": clean(i.get("content"), 160), "status": "completed", "doneAt": num(i.get("doneAt"))}
+                    for i in (p.get("done") or [])[-10:] if isinstance(i, dict)],
+           "session": short.get(p.get("session"), clean(p.get("session"), 8)), "main": bool(p.get("main")), "title": clean(p.get("title"), 60),
+           "activity": num(p.get("activity"))}
+    if o:
+        out["other"] = {"runs": ids(o.get("runs")), "side": ids(o.get("side"), 6), "tasks": ids(o.get("tasks"), 6)}
+    if isinstance(p.get("lead"), dict):
+        out["lead"] = trim_lead(p["lead"], short)  # so another chat, when picked, shows its own lead
+    return out
 
 
 def build_data(snap, title, cap):
     now = int(time.time() * 1000)
     sessions = {r.get("session") for r in (snap.get("runs") or []) if r.get("session")}
+    for p in [snap.get("plan") or {}] + list(snap.get("otherPlans") or []):
+        if isinstance(p, dict) and p.get("session"):
+            sessions.add(p["session"])
+    sessions |= {x.get("session") for x in list(snap.get("side") or []) + list(snap.get("tasks") or []) if isinstance(x, dict) and x.get("session")}
     short = {s: s[:8] for s in sessions}
     raw_slots = snap.get("slots") or snap.get("studio")
     slots = {"count": raw_slots.get("count"), "limit": raw_slots.get("limit"), "label": clean(raw_slots.get("label"), 20)} if isinstance(raw_slots, dict) and raw_slots else None
@@ -135,25 +207,19 @@ def build_data(snap, title, cap):
 
     git = snap.get("git") or {}
     lane_branches = {r["branch"] for r in keep if r.get("branch")} | {r["lane"] for r in keep}
-    wts = [{"name": clean(w.get("name"), 60), "branch": clean(w.get("branch"), 80), "tip": clean(w.get("tip"), 10), "ahead": w.get("ahead"), "behind": w.get("behind"),
+    wts = [{"name": clean(w.get("name"), 60), "branch": clean(w.get("branch"), 80), "tip": short_hash(w.get("tip")), "ahead": w.get("ahead"), "behind": w.get("behind"),
             "dirty": w.get("dirty"), "detached": bool(w.get("detached")), "path": ""} for w in (git.get("worktrees") or []) if w.get("branch")][:cap["worktrees"]]
     branches = {}
     for name, b in (git.get("branches") or {}).items():
         if name in lane_branches or name in {w["branch"] for w in wts}:
-            branches[clean(name, 80)] = {"name": clean(b.get("name") or name, 80), "tip": clean(b.get("tip"), 10), "ahead": b.get("ahead"), "behind": b.get("behind"),
+            branches[clean(name, 80)] = {"name": clean(b.get("name") or name, 80), "tip": short_hash(b.get("tip")), "ahead": b.get("ahead"), "behind": b.get("behind"),
                                          "unpushed": num(b.get("unpushed")), "upstream": clean(b.get("upstream"), 40), "gone": bool(b.get("gone"))}
     usage = snap.get("usage") if isinstance(snap.get("usage"), dict) and not snap["usage"].get("error") else None
     if usage:
         usage = {"updated": num(usage.get("updated")), "appSilent": num(usage.get("appSilent")), "windows": [{"label": clean(w.get("label"), 40), "percent": w.get("percent"), "resets": clean(w.get("resets"), 40), "from": clean(w.get("from"), 8),
                                                   "at": num(w.get("at")), "resetSince": bool(w.get("resetSince"))} for w in (usage.get("windows") or [])[:4]],
                  **{k: usage[k] for k in ("fiveHour", "weekly") if isinstance(usage.get(k), dict)}}
-    lead = snap.get("lead") if isinstance(snap.get("lead"), dict) else None
-    if lead:
-        adv = lead.get("advisor") or {}
-        lead = {"session": short.get(lead.get("session"), clean(lead.get("session"), 8)), "model": clean(lead.get("model"), 24), "activity": num(lead.get("activity")),
-                "state": clean(lead.get("state"), 10), "now": clean(lead.get("now"), 120), "said": clean(lead.get("said"), 240), "step": clean(lead.get("step"), 140),
-                "advisor": {"calls": num(adv.get("calls")), "last": clean(adv.get("last"), 30),
-                            "pending": {"since": num((adv.get("pending") or {}).get("since"))} if isinstance(adv.get("pending"), dict) else None}}
+    lead = trim_lead(snap.get("lead"), short)
     burn = snap.get("burn") or {}
     data = {
         "title": clean(title, 60), "project": clean(Path(str(snap.get("project") or "")).name, 40), "session": ",".join(sorted(short.values()))[:40],
@@ -161,11 +227,17 @@ def build_data(snap, title, cap):
         "runs": keep,
         "git": {"available": bool(git.get("available")), "integration": clean(git.get("integration"), 40), "worktrees": wts, "branches": branches},
         "usage": usage, "usageFile": "",
-        "plan": {"items": [{"content": clean(i.get("content"), 160), "status": clean(i.get("status"), 14)} for i in ((snap.get("plan") or {}).get("items") or [])[:14]],
-                 "updated": clean((snap.get("plan") or {}).get("updated"), 30)},
-        "side": [{"id": clean(a.get("id"), 20), "description": clean(a.get("description"), 100), "type": clean(a.get("type"), 30), "state": clean(a.get("state"), 10),
-                  "activity": num(a.get("activity")), "model": clean(a.get("model"), 24), "outTokens": num(a.get("outTokens")), "background": bool(a.get("background"))}
-                 for a in (snap.get("side") or [])[:10]],
+        "plan": trim_plan(snap.get("plan") or {}, short),
+        "otherPlans": [trim_plan(p, short) for p in (snap.get("otherPlans") or [])[:_status.MAX_CHATS - 1] if isinstance(p, dict)],
+        "side": [{"id": clean(a.get("id"), 20), "session": short.get(a.get("session"), clean(a.get("session"), 8)), "description": clean(a.get("description"), 100),
+                  "type": clean(a.get("type"), 30), "state": clean(a.get("state"), 10), "activity": num(a.get("activity")), "start": num(a.get("start")),
+                  "end": num(a.get("end")), "model": clean(a.get("model"), 24), "outTokens": num(a.get("outTokens")), "background": bool(a.get("background")),
+                  "brief": clean(a.get("brief"), 160), "result": clean(a.get("result"), 200), "now": clean(a.get("now"), 120), "nowText": clean(a.get("nowText"), 120),
+                  "said": clean(a.get("said"), 160), "tools": num(a.get("tools"))}
+                 for a in live_first(snap.get("side"), 10)],
+        "tasks": [{"id": clean(t.get("id"), 20), "session": short.get(t.get("session"), clean(t.get("session"), 8)), "title": clean(t.get("title"), 100),
+                   "cmd": clean(t.get("cmd"), 100), "state": clean(t.get("state"), 10), "start": num(t.get("start")), "end": num(t.get("end")),
+                   "summary": clean(t.get("summary"), 140)} for t in live_first(snap.get("tasks"), 10)],
         "handoff": {"name": clean((snap.get("handoff") or {}).get("name"), 40), "updated": num((snap.get("handoff") or {}).get("updated"))} if snap.get("handoff") else None,
         "lead": lead,
         "advisorLog": [{"at": num(e.get("at")), "asked": clean(e.get("asked"), 300), "advice": clean(e.get("advice"), 300), "action": clean(e.get("action"), 240),
@@ -174,7 +246,7 @@ def build_data(snap, title, cap):
                  "liveAgents": num(burn.get("liveAgents")), "liveOutTokens": num(burn.get("liveOutTokens")), "forecast": burn.get("forecast"),
                  "topLanes": [{"key": rk(x.get("key")), "lane": clean(x.get("lane"), 40), "title": clean(x.get("title"), 80), "tokens": num(x.get("tokens"))} for x in (burn.get("topLanes") or [])[:5]]},
         "ready": [{"key": rk(x.get("key")), "lane": clean(x.get("lane"), 40), "title": clean(x.get("title"), 100), "branch": clean(x.get("branch"), 60), "ahead": x.get("ahead"),
-                   "behind": x.get("behind"), "tip": clean(x.get("tip"), 10), "shipOk": x.get("shipOk"), "train": clean(x.get("train"), 12), "pushed": x.get("pushed"),
+                   "behind": x.get("behind"), "tip": short_hash(x.get("tip")), "shipOk": x.get("shipOk"), "train": clean(x.get("train"), 12), "pushed": x.get("pushed"),
                    "end": num(x.get("end"))} for x in (snap.get("ready") or [])[:12]],
         "attention": [{"sev": clean(x.get("sev"), 6), "kind": clean(x.get("kind"), 16), "key": rk(x.get("key")), "lane": clean(x.get("lane"), 50), "text": clean(x.get("text"), 220)}
                       for x in (snap.get("attention") or [])[:25]],
@@ -196,11 +268,12 @@ def make_data(snap, title, max_kb):
 def render_page(data):
     src = (HERE / "index.html").read_text(encoding="utf-8")
     a, b = src.find("/*SOURCE_BEGIN*/"), src.find("/*SOURCE_END*/")
-    if a < 0 or b < 0:
-        raise SystemExit("index.html has no SOURCE markers")
+    if a < 0 or b < a:
+        raise SystemExit("index.html has no SOURCE_BEGIN ... SOURCE_END block (in that order)")
     source = '''
 var seed = JSON.parse(document.getElementById("seed").textContent);
-ingest(seed, "seed:" + seed.generated);
+// a snapshot that fails to draw must not stop the subscription below: the next doc update can still fix the page
+try { ingest(seed, "seed:" + seed.generated); } catch (e) { if (window.console) console.error("phone page: the embedded snapshot failed to draw", e); }
 setInterval(tickMeta, 15000);
 // subscribe to the doc; subscribing again (when the page is shown) delivers the current doc at once
 var unsub = null;
@@ -228,9 +301,12 @@ subscribe();
     flag = "var STALE_MS = 120000, PHONE = false"
     if flag not in out:
         raise SystemExit("snapshot_tree: the PHONE flag line was not found in index.html; update the pattern")
-    out = out.replace(flag, "var STALE_MS = 900000, PHONE = true", 1)
+    # amber after 11 minutes: one missed 10-minute refresh
+    out = out.replace(flag, "var STALE_MS = 660000, PHONE = true", 1)
     out = out.replace("<title>Agent control room</title>", "<title>%s</title>" % data["title"].replace("<", "&lt;"), 1)
-    seed = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+    # every "<" escaped: then no text in the data ("</script>", or "<!--" followed by "<script") can end or hijack the
+    # seed block; JSON.parse reads < back as "<"
+    seed = json.dumps(data, ensure_ascii=False).replace("<", "\\u003c")
     i = out.index("<script>")
     return out[:i] + '<script id="seed" type="application/json">' + seed + "</script>\n" + out[i:]
 

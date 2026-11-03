@@ -20,16 +20,38 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import status as _status  # noqa: E402
 
-PATH_RE = re.compile(r"(?:[A-Za-z]:[\\/]|/(?:Users|home|tmp|var|private)/)[^\s\"')]*")
-SECRET_RE = re.compile(r"(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{12,}|[A-Za-z0-9_-]{32,})")
+# A drive letter only at the start of a word (so the "s:/" of "https://" is not taken for a path), and a home or temp
+# folder where a path can start, also behind a Git Bash or WSL drive (/c/Users/..., /mnt/c/Users/...), but not inside
+# a URL such as example.com/home/...
+PATH_RE = re.compile(r"(?:(?<![A-Za-z])[A-Za-z]:[\\/]|(?<![\w.])/(?:mnt/)?(?:[A-Za-z]/)?(?:Users|home|tmp|var|private)/)[^\s\"')]*")
+# Key shapes, UUIDs (session ids in free text), and any other run of 32 or more key characters, unless that run is a
+# name: three or more lower-case parts joined by - or _ (a ticket key such as PROJ-12 may lead), two of them words.
+# A Claude project-folder slug (C--Users-<name>-...) carries a user name and a path: it is never a name.
+SECRET_RE = re.compile(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"
+                       r"|sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|xox[abpr]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{12,}|[A-Za-z0-9_-]{32,}")
 URL_CRED_RE = re.compile(r"(https?://)[^/\s:@]+:[^/\s@]+@")
+# a Claude project-folder slug, which spells out a path and so a user name: C--Users-name-... or -home-name-...
+SLUG_RE = re.compile(r"\b[A-Za-z]--[A-Za-z0-9_-]+|(?<![\w-])-(?:home|Users|root|mnt)-[A-Za-z0-9_-]+")
+
+
+def _secret(m):
+    t = m.group(0)
+    if re.match(r"(sk-|ghp_|xox[abpr]-|AKIA)", t) or re.fullmatch(r"[0-9a-fA-F-]{36}", t) or "--" in t:
+        return "(removed)"
+    parts = [p for p in re.split(r"[-_]", t) if p]
+    rest = parts[1:] if parts and re.fullmatch(r"[A-Z][A-Z0-9]*", parts[0]) else parts
+    words = [p for p in rest if p.isalpha() and len(p) >= 2]
+    name = (len(parts) >= 3 and len(words) >= 2 and all(len(p) <= 24 for p in parts)
+            and all(re.fullmatch(r"[a-z0-9]+", p) for p in rest))
+    return t if name else "(removed)"
 
 
 def clean(value, n=160):
     s = "" if value is None else str(value)
     s = URL_CRED_RE.sub(r"\1", s)
     s = PATH_RE.sub("(path)", s)
-    s = SECRET_RE.sub("(removed)", s)
+    s = SLUG_RE.sub("(removed)", s)
+    s = SECRET_RE.sub(_secret, s)
     s = " ".join(s.split())
     return s if len(s) <= n else s[: n - 1] + "…"
 
@@ -154,7 +176,7 @@ if(window.claude&&window.claude.use){window.claude.use('db').then(function(db){i
 
 
 def render_page(data):
-    seed = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+    seed = json.dumps(data, ensure_ascii=False).replace("<", "\\u003c")  # every "<": no text can end or hijack the block
     return ('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             "<title>%s</title><style>%s</style></head><body><div id=\"app\"></div>"
             '<script id="seed" type="application/json">%s</script><script>%s</script></body></html>') % (

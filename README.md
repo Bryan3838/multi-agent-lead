@@ -20,7 +20,7 @@ A Claude Code skill for leading a long, multi-agent coding project in any repo: 
 - **Existing project:** reads the handoff or notes file, starts the dashboard, resumes unfinished work.
 - **New idea:** an Opus agent writes `docs/DESIGN.md`, you approve it once, then lanes build it.
 - **Lanes:** `scripts/branch-run.js` (plan, build, critics, fix, skeptic) and `scripts/train-run.js` (merge, full test gate, smoke test), with the model chosen per role.
-- **Dashboard:** `dashboard/run.py`, a local page at 127.0.0.1 showing the lead, advisor, lanes, agents, usage and the merge queue. It costs no tokens.
+- **Dashboard:** `dashboard/run.py`, a local page at 127.0.0.1 showing the lead, advisor, lanes, agents, usage, the merge queue, and the task list as a queue (what runs now and what each agent is doing, what waits on you, what is next, what is done). It costs no tokens. Its tests: `python -m unittest discover -s dashboard/tests`.
 - **Phone page:** `dashboard/snapshot_tree.py` makes a private page you can open on your phone.
 - **Hook:** `hooks/task-list-reminder.py` reminds the lead to update its task list after each launch.
 

@@ -224,6 +224,29 @@ body.pcol,body.pcol *{cursor:col-resize!important;user-select:none}
 #plan .stale{color:var(--idle);font-size:var(--fs-s);margin-top:var(--sp1)}
 #side .agent{display:flex;gap:var(--sp2);align-items:center;font-size:var(--fs-s);padding:2px 0;min-width:0;color:var(--text2)}
 #side .agent .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* the task list as a queue: Now, Waiting on you, Next, Done; live work under its step, with what it is doing */
+#plan .qh{display:flex;align-items:baseline;gap:6px;margin:10px 0 3px;font-size:var(--fs-xs);font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+#plan .qh:first-child{margin-top:2px}
+#plan .qh .cnt{text-transform:none;letter-spacing:0}
+#plan .qh.lnk{cursor:pointer}
+#plan .task.waiting .box{border-color:var(--idle)}
+#plan .task.waiting .box::after{content:"";width:6px;height:2px;background:var(--idle)}
+#plan .task.waiting.auto-failed .box{border-color:var(--fail)}#plan .task.auto-failed .box::after{content:none}
+#plan .badge.note{border-color:transparent;padding:0;color:var(--muted)}
+#plan .badge.note.warn{color:var(--idle)}#plan .badge.note.bad{color:var(--fail)}
+#plan .taskagent.two,#side .agent.two{align-items:flex-start}
+#plan .taskagent.two .dot{margin-top:5px}
+#plan .taskagent .nm b,#side .agent .nm b{font-weight:500;color:var(--text2)}
+#plan .taskagent .what,#side .agent .what{display:block;color:var(--muted);font-size:var(--fs-xs);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#plan .taskagent .kind{color:var(--faint);margin-right:4px}
+#plan .qempty{font-size:var(--fs-s);color:var(--faint);padding:2px 0}
+#side .agent.two .dot{margin-top:5px}
+#side .agent .nm{white-space:normal}
+#side .agent .nm b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chats{display:flex;flex-wrap:wrap;gap:2px;padding:2px;margin:0 0 6px;background:var(--panel2);border-radius:var(--r)}
+.chats button{flex:1 1 0;min-width:0;border:0;background:none;border-radius:var(--r-s);height:24px;padding:0 8px;font-size:var(--fs-s);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chats button:hover{color:var(--text)}
+.chats button.on{background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--line),0 1px 2px rgba(0,0,0,.05)}
 .kv{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp2);font-size:var(--fs-s);padding:2px 0;color:var(--muted)}
 .kv b{font-weight:500;color:var(--text);font-variant-numeric:tabular-nums;text-align:right}
 .kv b.hot{color:var(--fail)}.kv b.warm{color:var(--idle)}
@@ -358,7 +381,9 @@ body.open #scrim{display:block}body.open #drawer{transform:none;visibility:visib
 
 /* touch and narrow screens */
 @media (pointer:coarse),(max-width:700px){
-  button,.iconbtn,.filters button,.minibtn,.projsel{min-height:44px;min-width:44px}
+  button,.iconbtn,.filters button,.minibtn,.projsel,.chats button{min-height:44px;min-width:44px}
+  #side .agent.agent{min-height:44px;padding-top:6px;padding-bottom:6px}
+  #plan .qh.lnk{min-height:44px;align-items:center;margin:4px 0}
   #plan .task.task{min-height:44px;align-items:flex-start;padding-top:12px;padding-bottom:12px}
   #plan .taskagent.taskagent{padding-top:10px;padding-bottom:10px;min-height:44px;align-items:center}
   .kv.lnk,.top.lnk{min-height:44px;align-items:center}
@@ -410,11 +435,11 @@ body.open #scrim{display:block}body.open #drawer{transform:none;visibility:visib
   <div id="colDiv" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Side column width" title="Drag to resize · arrow keys · double-click for the default width"></div>
   <aside id="sideCol">
     <div class="panel" id="needPanel" hidden><h2>Needs you<span class="cnt" id="needCnt"></span></h2><div id="need"></div></div>
-    <div class="panel" id="planPanel" hidden><h2>Task list<span class="cnt" id="planCnt"></span></h2><div id="plan"></div></div>
+    <div class="panel" id="planPanel" hidden><h2 title="The lead's task list as a queue: what runs now, what waits on you, what is next and what is done. A step's state comes from the work it names (lanes, side agents, background commands), not only from the list">Task list<span class="cnt" id="planCnt"></span></h2><div id="plan"></div></div>
     <div class="panel" id="burnPanel"><h2>Burn rate</h2><div id="burn"></div></div>
     <div class="panel" id="readyPanel" hidden><h2>Ready to merge<span class="cnt" id="readyCnt"></span></h2><div id="ready"></div></div>
     <div class="panel" id="trainPanel"><h2>Merge train</h2><div id="trains"></div></div>
-    <div class="panel" id="sidePanel" hidden><h2 title="Subagents the lead started directly, outside a workflow">Side agents<span class="cnt" id="sideCnt"></span></h2><div id="side"></div></div>
+    <div class="panel" id="sidePanel" hidden><h2 title="Subagents the lead started directly (outside a workflow) and its background commands">Side agents and jobs<span class="cnt" id="sideCnt"></span></h2><div id="side"></div></div>
     <div class="panel" id="mixPanel"><h2>Model mix</h2><div id="mix"></div></div>
     <div class="panel" id="wtsPanel"><h2>Worktrees<span class="cnt" id="wtsCnt"></span></h2><div id="wts"></div></div>
     <div class="panel" id="eventsPanel"><h2>Recent events</h2><div class="events" id="events"></div></div>
@@ -628,6 +653,8 @@ function drawHeader() {
   if (!PHONE && age > 120) banner("banner", "Data is " + age + "s old: the collector may have stopped (run.py).");
   (data.problems || []).forEach(function (p) { banner("banner info", p); });
   if (data.git && !data.git.available) banner("banner info", "Not a git repository: branches and worktrees are hidden.");
+  // a part that failed to draw stays named until a redraw succeeds (the header is redrawn on its own every 30 s)
+  if (drawFailed.length) { var fb = h("div", "banner", "Could not draw: " + drawFailed.join(", ") + ". The rest of the page is current; the browser console has the error."); fb.id = "drawFail"; bn.appendChild(fb); }
 }
 // "5-hour limit" -> "5h", "Weekly · all models" -> "Week"; the full label stays in the tooltip
 function winName(l) {
@@ -745,49 +772,200 @@ function stepEta(hits, noCount) {
   return (known.length ? (late && !left ? "late" : "~" + dur(left)) : "running") + (hits.length > 1 && !noCount ? " \u00b7 " + hits.length + " live" : "");
 }
 function taskFor(r) {
-  var items = (data.plan && data.plan.items) || [], tokens;
+  // the step a run belongs to: the collector's match when the data carries one, else the page's own word match
+  var ps = plansOf(), derived = false;
+  for (var p = 0; p < ps.length; p++) {
+    var it = (ps[p].items || []).filter(function (i) { if (i.derived) derived = true; return i.derived && (i.derived.runs || []).indexOf(r.id) >= 0; })[0];
+    if (it) return it.content;
+  }
+  if (derived) return "";
+  var items = (data.plan && data.plan.items) || [];
   var hit = items.filter(function (i) { return matchRun(r, wordSet(i.content)); });
   hit.sort(function (x, y) { return (stepState(x).status === "completed") - (stepState(y).status === "completed"); });
   return hit[0] ? hit[0].content : "";
 }
+
+/* ---------- the task list as a queue ---------- */
+var chatSel = "", doneOpen = false;
+try { chatSel = localStorage.getItem("dash-chat") || ""; doneOpen = localStorage.getItem("dash-done") === "1"; } catch (e) {}
+// every shown chat's task list, the main one first: a project can have more than one chat at work
+function plansOf() { return (data && data.plan ? [data.plan] : []).concat((data && data.otherPlans) || []); }
+function curPlan() {
+  var ps = plansOf();
+  return ps.filter(function (p) { return p.session && p.session === chatSel; })[0] || ps[0] || { items: [] };
+}
+function byId(list) { var m = {}; (list || []).forEach(function (x) { if (x && x.id) m[x.id] = x; }); return m; }
+var WAIT_RE = /^\s*(decisions?|needs? (a person|you|the user)|waiting( on| for)?|blocked|ask)\b/i;
+// A plan as a queue: each step with what the evidence says about it (item.derived, from the collector; for an older
+// status.json the page's own word match stands in) and the live work that no step names.
+function queueOf(p) {
+  var items = (p && p.items) || [], rmap = byId(data.runs), has = items.some(function (i) { return !!i.derived; }), taken = {}, seen = {};
+  var steps = items.map(function (i, ix) {
+    var d = i.derived;
+    if (!d) {
+      // every run the step's words match belongs to it (as the old page grouped them); only the live ones make it run
+      var ss = stepState(i), tokens = wordSet(i.content), all = (data.runs || []).filter(function (r) { return matchRun(r, tokens); });
+      var rs = all.filter(function (r) { return live(r.state); });
+      rs.forEach(function (r) { taken[r.id] = 1; });
+      d = { status: rs.length ? "running" : ss.auto === "finished" ? "finished" : ss.auto || "", note: rs.length ? (i.status === "completed" ? "marked done, still running" : "") : ss.note,
+        runs: all.map(function (r) { return r.id; }), side: [], tasks: [], live: rs.length };
+    }
+    var s = { item: i, ix: ix, d: d, runs: (d.runs || []).map(function (id) { return rmap[id]; }).filter(Boolean) };
+    s.sec = sectionOf(s);
+    // two steps with the same text get distinct keys (a fold or focus on one must not reach the other)
+    s.nth = seen[i.content] = (seen[i.content] || 0) + 1;
+    s.key = i.content + (s.nth > 1 ? "#" + s.nth : "");
+    return s;
+  });
+  var other = (p && p.other) || { runs: has ? [] : (data.runs || []).filter(function (r) { return live(r.state) && !taken[r.id]; }).map(function (r) { return r.id; }), side: [], tasks: [] };
+  return { steps: steps, other: other };
+}
+// Now: has live work, or the lead marked it in progress. Waiting on you: a decision, or its lane failed. Done: ticked,
+// or every lane it names finished. Next: the rest (a stopped lane can be resumed, so it is next, not done).
+function sectionOf(s) {
+  var st = s.item.status, d = s.d;
+  if (d.status === "running") return "now";
+  if (d.status === "failed") return "wait";
+  if (d.status === "stopped") return "next";
+  if (st !== "completed" && WAIT_RE.test(s.item.content)) return "wait";
+  if (st === "completed" || d.status === "finished") return "done";
+  return st === "in_progress" ? "now" : "next";
+}
+// what a live agent is doing, in plain words: the collector's text when there is one, else the raw call put into words
+function doing(a) {
+  if (a.state === "failed") return a.error || "failed";
+  if (a.repeat >= 4) return "repeating the same call ×" + a.repeat;
+  return a.nowText || plainTool(a.now) || (a.said ? firstSentences(a.said, 140) : "") || (a.state === "idle" ? "quiet for a while" : "working");
+}
+function workRow(kind, name, what, state, model, at, title, open, key) {
+  var row = h("div", "taskagent two lnk", "", [h("span", "dot " + state), h("span", "nm", "", [kind ? h("span", "kind", kind) : null, h("b", "", name), h("span", "what", what)]),
+    model ? modelBadge(model) : null, h("span", "muted small", at ? ago(at).replace(" ago", "") : "")]);
+  row.title = title;
+  clickable(row, open, key, title.split("\n").slice(0, 2).join(", "));
+  return row;
+}
+// one row per live agent of the given runs, then the given side agents and background commands that are still going
+function liveRows(ids) {
+  var rows = [], rmap = byId(data.runs), sm = byId(data.side), tm = byId(data.tasks);
+  (ids.runs || []).forEach(function (id) {
+    var r = rmap[id];
+    if (!r || !live(r.state)) return;
+    var key = r.isTrain ? "run:" + r.id : r.session + "|" + r.lane, nm = r.isTrain ? trainName(r) : r.lane, open = function () { openDrawer(key); };
+    var ag = r.agents.filter(function (a) { return live(a.state); });
+    if (!ag.length) rows.push(workRow("", nm, r.state === "idle" ? "quiet for a while" : "starting its next agent", r.state, "", r.activity, nm + "\n" + r.title, open, "ta:" + r.id));
+    ag.forEach(function (a) {
+      var w = doing(a);
+      rows.push(workRow("", nm + ": " + (a.label || a.id), w, a.repeat >= 4 ? "failed" : a.state, a.model, a.activity, nm + ": " + (a.label || a.id) + "\n" + w + "\n" + a.state + ", last activity " + ago(a.activity), open, "ta:" + r.id + "|" + a.id));
+    });
+  });
+  (ids.side || []).forEach(function (id) {
+    var a = sm[id];
+    if (!a || !live(a.state)) return;
+    var w = doing(a);
+    rows.push(workRow("side agent", a.description || a.id, w, a.state, a.model, a.activity, "Side agent: " + (a.description || a.id) + "\n" + w + (a.brief ? "\nBrief: " + a.brief : ""), function () { openDrawer("side:" + a.id); }, "ts:" + a.id));
+  });
+  (ids.tasks || []).forEach(function (id) {
+    var t = tm[id];
+    if (!t || t.state !== "running") return;
+    var w = "running for " + dur(Date.now() - (t.start || Date.now()));
+    rows.push(workRow("command", t.title, w, "running", "", t.start, "Background command: " + t.title + "\n" + w + (t.cmd ? "\n" + t.cmd : ""), function () { openDrawer("task:" + t.id); }, "tt:" + t.id));
+  });
+  return rows;
+}
+function addRows(box, rows) {
+  rows.slice(0, 6).forEach(function (r) { box.appendChild(r); });
+  if (rows.length > 6) box.appendChild(h("div", "taskagent muted small", "+" + (rows.length - 6) + " more"));
+}
+function liveCount(p) {
+  var n = 0, o = (p && p.other) || {};
+  ((p && p.items) || []).forEach(function (i) { n += (i.derived && i.derived.live) || 0; });
+  return n + (o.runs || []).length + (o.side || []).length + (o.tasks || []).length;
+}
+function chatSwitch(ps, cur) {
+  var seg = h("div", "chats");
+  seg.setAttribute("role", "group"); seg.setAttribute("aria-label", "Chats of this project");
+  ps.forEach(function (p) {
+    var n = liveCount(p), name = p.title || "Chat " + String(p.session || "").slice(0, 8);
+    var b = h("button", p === cur ? "on" : "", name + (n ? " · " + n + " live" : ""));
+    b.title = (p.main ? "The main chat" : "Another chat") + " of this project: " + name + "\n" + (n ? n + " live" : "nothing live") + (p.activity ? ", last active " + ago(p.activity) : "");
+    b.dataset.key = "chat:" + (p.session || "main"); b.setAttribute("aria-pressed", p === cur ? "true" : "false");
+    b.addEventListener("click", function () { chatSel = p.main ? "" : p.session || ""; try { localStorage.setItem("dash-chat", chatSel); } catch (e) {} draw(); });
+    seg.appendChild(b);
+  });
+  return seg;
+}
+var SEC_WORD = { now: "running", wait: "waiting on you", next: "next", done: "done" };
+function stepRow(s) {
+  var i = s.item, d = s.d, sec = s.sec;
+  var cls = { now: "in_progress", wait: "waiting", next: "pending", done: "completed" }[sec] + (d.status === "failed" ? " auto-failed" : d.status === "stopped" ? " auto-stopped" : "");
+  var eta = sec === "now" ? stepEta(s.runs.filter(function (r) { return live(r.state); })) : "";
+  var note = d.note === "marked done, still running" ? ["still running", "warn"] : d.status === "failed" ? ["lane failed", "bad"]
+    : d.status === "finished" && i.status !== "completed" ? ["finished, not ticked", ""] : d.status === "stopped" ? ["stopped", ""] : null;
+  var kids = [h("span", "box", "", [sec === "done" ? icon("check") : d.status === "failed" ? icon("x") : null]), h("span", "", i.content)];
+  if (note) kids.push(h("span", "badge note " + note[1], note[0]));
+  else if (eta) kids.push(h("span", "badge eta", eta));
+  var row = h("div", "task " + cls + (focus.step === i.content ? " sel" : ""), "", kids);
+  row.title = s.gone ? "Finished " + (i.doneAt ? ago(i.doneAt) : "earlier") + "; the lead has since dropped it from its list" :
+    (d.note ? d.note.charAt(0).toUpperCase() + d.note.slice(1) + ". " : "") + (i.by === "wrap_up" && i.status === "completed" ? "Ticked at the end of a turn. " : "") +
+    (eta ? "Time left for its live runs: " + eta + ". " : "") + "Hover to highlight in the tree, click to pin and move there";
+  clickable(row, function () { selectStep(i.content); }, "t:" + (s.key || i.content), i.content + ", " + SEC_WORD[sec] + (d.note ? ", " + d.note : "") + (focus.step === i.content ? ", pinned" : ""));
+  row.addEventListener("focus", function () { focus.hover = i.content; applyHighlight(); });
+  row.addEventListener("blur", function () { focus.hover = ""; applyHighlight(); });
+  row.addEventListener("mouseenter", function () { focus.hover = i.content; applyHighlight(); });
+  row.addEventListener("mouseleave", function () { focus.hover = ""; applyHighlight(); });
+  if (row.matches && row.matches(":hover")) focus.hover = i.content;
+  return row;
+}
 function drawPlan() {
   focus.hover = "";
-  var p = data.plan, items = (p && p.items) || [], box = clear($("plan"));
-  $("planPanel").hidden = !items.length;
-  if (!items.length) return;
-  var sts = items.map(stepState), done = sts.filter(function (x) { return x.status === "completed"; }).length, auto = sts.filter(function (x) { return x.auto; }).length;
-  if (auto) box.appendChild(h("div", "stalehint", auto + (auto === 1 ? " step looks" : " steps look") + " stale: its lane has ended but the list was not updated"));
-  items.forEach(function (i, ix) {
-    var ss = sts[ix], hits = ss.status === "completed" || ss.auto ? [] : stepRuns(i.content), eta = stepEta(hits);
-    var eb = eta ? h("span", "badge eta", eta) : ss.auto ? h("span", "badge eta", ss.note) : null;
-    if (eta) eb.title = "Time left for the live runs this step names (matched by name)";
-    else if (ss.auto) eb.title = "Every run this step names has ended; the lead has not updated the step";
-    var trow = h("div", "task " + ss.status + (ss.auto ? " auto-" + ss.auto : "") + (focus.step === i.content ? " sel" : ""), "",
-      [h("span", "box", "", [ss.status === "completed" ? icon("check") : ss.auto === "failed" ? icon("x") : null]), h("span", "", i.content), eb]);
-    trow.title = "Hover to highlight in the tree, click to pin and move there";
-    clickable(trow, function () { selectStep(i.content); }, "t:" + i.content, i.content + ", " + ss.status.replace("_", " ") + (ss.auto ? ", " + ss.note : "") + (focus.step === i.content ? ", pinned" : ""));
-    trow.addEventListener("focus", function () { focus.hover = i.content; applyHighlight(); });
-    trow.addEventListener("blur", function () { focus.hover = ""; applyHighlight(); });
-    trow.addEventListener("mouseenter", function () { focus.hover = i.content; applyHighlight(); });
-    trow.addEventListener("mouseleave", function () { focus.hover = ""; applyHighlight(); });
-    if (trow.matches && trow.matches(":hover")) focus.hover = i.content;
-    box.appendChild(trow);
-    var ag = [];
-    hits.forEach(function (r) { r.agents.forEach(function (a) { if (a.state === "running" || a.state === "idle") ag.push({ r: r, a: a }); }); });
-    ag.slice(0, 6).forEach(function (x) {
-      var row = h("div", "taskagent lnk", "", [h("span", "dot " + x.a.state), h("span", "nm", (x.r.isTrain ? "train" : x.r.lane) + ": " + (x.a.label || x.a.id)), x.a.model ? modelBadge(x.a.model) : null,
-        h("span", "muted small", ago(x.a.activity).replace(" ago", ""))]);
-      row.title = x.a.state + ", last activity " + ago(x.a.activity);
-      clickable(row, function () { openDrawer(x.r.isTrain ? "run:" + x.r.id : x.r.session + "|" + x.r.lane); }, "ta:" + x.r.id + "|" + x.a.id);
-      box.appendChild(row);
-    });
-    if (ag.length > 6) box.appendChild(h("div", "taskagent muted small", "+" + (ag.length - 6) + " more agents"));
-  });
-  var age = p.updated ? Date.now() - Date.parse(p.updated) : 0;
-  setCount("planCnt", done + "/" + items.length, done + " of " + items.length + " done" + (p.updated ? ", updated " + ago(Date.parse(p.updated)) : ""));
-  var stale = age > 30 * 60e3 && (data.runs || []).some(function (r) { return live(r.state); });
-  box.style.opacity = stale ? "0.6" : "";
-  if (stale) box.appendChild(h("div", "stale", "Out of date: not updated for " + dur(age) + " while agents work."));
+  var box = clear($("plan")), ps = plansOf(), p = curPlan(), q = queueOf(p), o = q.other;
+  var secs = { now: [], wait: [], next: [], done: [] };
+  q.steps.forEach(function (s) { secs[s.sec].push(s); });
+  // live work that a step not started (or waiting) names is listed with the work no step names: it is running, but the
+  // step that mentions it may not be its own
+  o = { runs: (o.runs || []).slice(), side: (o.side || []).slice(), tasks: (o.tasks || []).slice() };
+  secs.next.concat(secs.wait).forEach(function (s) { ["runs", "side", "tasks"].forEach(function (k) { (s.d[k] || []).forEach(function (id) { if (o[k].indexOf(id) < 0) o[k].push(id); }); }); });
+  var rm = byId(data.runs), sm = byId(data.side), tm = byId(data.tasks);
+  o.runs = o.runs.filter(function (id) { return rm[id] && live(rm[id].state); });
+  o.side = o.side.filter(function (id) { return sm[id] && live(sm[id].state); });
+  o.tasks = o.tasks.filter(function (id) { return tm[id] && tm[id].state === "running"; });
+  var otherN = o.runs.length + o.side.length + o.tasks.length;
+  // finished steps the lead has since dropped from its list stay in Done as a history
+  var listed = {};
+  secs.done.forEach(function (s) { listed[s.item.content] = 1; });
+  (p.done || []).forEach(function (i, k) { if (!listed[i.content]) { listed[i.content] = 1; secs.done.push({ item: i, ix: -1 - k, d: { status: "", note: "", runs: [], side: [], tasks: [], live: 0 }, runs: [], sec: "done", gone: true }); } });
+  $("planPanel").hidden = !q.steps.length && !otherN && ps.length < 2 && !secs.done.length;
+  if ($("planPanel").hidden) return;
+  if (ps.length > 1) box.appendChild(chatSwitch(ps, p));
+  secs.done.sort(function (a, b) { return (b.item.doneAt || 0) - (a.item.doneAt || 0) || b.ix - a.ix; });
+  function head(name, n, tip) { var e = h("div", "qh", "", [document.createTextNode(name), h("span", "cnt", n ? String(n) : "")]); e.title = tip; box.appendChild(e); return e; }
+  head("Now", secs.now.length + otherN, "Steps with live work or marked in progress, and live work no step names");
+  if (!secs.now.length && !otherN) box.appendChild(h("div", "qempty", q.steps.length ? "Nothing is running." : "No task list in this chat yet; nothing is running."));
+  secs.now.forEach(function (s) { box.appendChild(stepRow(s)); addRows(box, liveRows(s.d)); });
+  if (otherN) {
+    var oh = h("div", "subh", "Also running · not under a running step"); oh.title = "Live work of this chat that no running step names (lanes, side agents, background commands); a step not started yet may mention it";
+    box.appendChild(oh); addRows(box, liveRows(o));
+  }
+  if (secs.wait.length) { head("Waiting on you", secs.wait.length, "Open decisions, steps that need a person, and steps whose lane failed"); secs.wait.forEach(function (s) { box.appendChild(stepRow(s)); }); }
+  if (secs.next.length) { head("Next", secs.next.length, "Steps not started yet, in the lead's order (a stopped lane can be resumed)"); secs.next.forEach(function (s) { box.appendChild(stepRow(s)); }); }
+  if (secs.done.length) {
+    var dh = head((doneOpen ? "▾ " : "▸ ") + "Done", secs.done.length, doneOpen ? "Hide the finished steps" : "Show the finished steps, newest first");
+    dh.classList.add("lnk");
+    clickable(dh, function () { doneOpen = !doneOpen; try { localStorage.setItem("dash-done", doneOpen ? "1" : "0"); } catch (e) {} draw(); }, "q:done", (doneOpen ? "Hide " : "Show ") + secs.done.length + " finished steps");
+    dh.setAttribute("aria-expanded", doneOpen ? "true" : "false");
+    if (doneOpen) secs.done.forEach(function (s) { box.appendChild(stepRow(s)); });
+  }
+  var upd = p.updated ? Date.parse(p.updated) : 0, inList = q.steps.filter(function (s) { return s.sec === "done"; }).length;
+  setCount("planCnt", inList + "/" + q.steps.length, secs.now.length + " running, " + secs.wait.length + " waiting on you, " + secs.next.length + " next, " + inList + " of " + q.steps.length + " done" +
+    (secs.done.length > inList ? " (" + (secs.done.length - inList) + " more done earlier)" : "") + (upd ? "; the list was last changed " + ago(upd) : ""));
+  // The lead's own list can lag behind the work (the states above already follow it). Say so only when something
+  // happened that the list may not show yet: a lane of this chat started or ended after the list last changed.
+  var late = upd && (data.runs || []).filter(function (r) { return (!p.session || r.session === p.session) && Math.max(r.start || 0, r.end || 0) > upd + 60e3; })
+    .sort(function (a, b) { return Math.max(a.start, a.end || 0) - Math.max(b.start, b.end || 0); })[0];
+  if (late && Date.now() - upd > 10 * 60e3) {
+    var ev = late.end && late.end > upd ? "ended" : "started", evAt = ev === "ended" ? late.end : late.start;
+    box.appendChild(h("div", "stale", "The list has not changed since " + (late.isTrain ? trainName(late) : late.lane) + " " + ev + " " + ago(evAt) + "; the states above follow the live work."));
+  }
   applyHighlight();
 }
 // the small count beside a panel's name
@@ -845,7 +1023,7 @@ function drawMix() {
   });
   (data.side || []).forEach(function (a) {
     var f = famOf(a.model);
-    if (a.state !== "done") liveC[f] = (liveC[f] || 0) + 1;
+    if (live(a.state)) liveC[f] = (liveC[f] || 0) + 1;
     if (now - a.activity < 24 * 3600e3) dayC[f] = (dayC[f] || 0) + 1;
   });
   var fam = (data.burn && data.burn.byFamily5h) || {};
@@ -903,18 +1081,79 @@ function drawReady() {
   });
   if (items.length > 12) box.appendChild(h("div", "foot", "+" + (items.length - 12) + " more"));
 }
+// a side agent's or a background command's line under its name: what it is doing now, else how it ended
+function sideWhat(a) {
+  if (live(a.state)) return doing(a);
+  if (a.state === "failed") return "failed" + (a.result ? ": " + firstSentences(a.result, 120) : "");
+  if (a.state === "stopped") return "stopped";
+  return a.result ? "finished: " + firstSentences(a.result, 120) : "finished";
+}
+function jobWhat(t) {
+  if (t.state === "running") return "running for " + dur(Date.now() - (t.start || Date.now()));
+  return t.summary || (t.state === "done" ? "finished" : t.state);
+}
 function drawSide() {
   var items = data.side || [], box = clear($("side"));
-  $("sidePanel").hidden = !items.length;
-  setCount("sideCnt", items.length || "");
+  var jobs = (data.tasks || []).filter(function (t) { return t.state === "running" || Date.now() - (t.end || t.start || 0) < RECENT_MS.recent; });
+  $("sidePanel").hidden = !items.length && !jobs.length;
+  var liveN = items.filter(function (a) { return live(a.state); }).length + jobs.filter(function (t) { return t.state === "running"; }).length;
+  setCount("sideCnt", liveN ? liveN + " live" : items.length + jobs.length || "", liveN + " running; " + items.length + " side agents and " + jobs.length + " background commands listed");
   items.slice(0, 10).forEach(function (a) {
-    var row = h("div", "agent", "", [h("span", "dot " + (a.state === "done" ? "done" : a.state)), h("span", "nm", a.description || a.id)]);
+    var w = sideWhat(a), row = h("div", "agent two lnk", "", [h("span", "dot " + a.state), h("span", "nm", "", [h("b", "", a.description || a.id), h("span", "what", w)])]);
     if (a.model) row.appendChild(modelBadge(a.model));
     row.appendChild(h("span", "muted small", ago(a.activity).replace(" ago", "")));
-    row.title = (a.description || a.id) + "\n" + a.state + ", last activity " + ago(a.activity);
+    row.title = (a.description || a.id) + "\n" + w + (a.brief ? "\nBrief: " + a.brief : "") + "\n" + a.state + ", last activity " + ago(a.activity);
+    clickable(row, function () { openDrawer("side:" + a.id); }, "s:" + a.id, "Side agent " + (a.description || a.id) + ", " + w);
     box.appendChild(row);
   });
   if (items.length > 10) box.appendChild(h("div", "foot", "+" + (items.length - 10) + " older"));
+  if (!jobs.length) return;
+  var jh = h("div", "subh", "Background commands"); jh.title = "Commands the lead started in the background: the running ones, then how recent ones ended";
+  box.appendChild(jh);
+  jobs.slice(0, 8).forEach(function (t) {
+    var w = jobWhat(t), at = t.state === "running" ? t.start : t.end || t.start;
+    var row = h("div", "agent two lnk", "", [h("span", "dot " + t.state), h("span", "nm", "", [h("b", "", t.title), h("span", "what", w)]), h("span", "muted small", at ? ago(at).replace(" ago", "") : "")]);
+    row.title = t.title + "\n" + w + (t.cmd ? "\n" + t.cmd : "");
+    clickable(row, function () { openDrawer("task:" + t.id); }, "j:" + t.id, "Background command " + t.title + ", " + w);
+    box.appendChild(row);
+  });
+  if (jobs.length > 8) box.appendChild(h("div", "foot", "+" + (jobs.length - 8) + " more"));
+}
+function stepOfWork(kind, id) {
+  var k = kind === "side" ? "side" : "tasks", ps = plansOf();
+  for (var p = 0; p < ps.length; p++) {
+    var it = (ps[p].items || []).filter(function (i) { return i.derived && (i.derived[k] || []).indexOf(id) >= 0; })[0];
+    if (it) return it.content;
+  }
+  return "";
+}
+// details of a side agent ("side:<id>") or a background command ("task:<id>")
+function sideDrawer(key) {
+  var cut_ = key.indexOf(":"), kind = key.slice(0, cut_), id = key.slice(cut_ + 1), x = byId(kind === "side" ? data.side : data.tasks)[id];
+  if (!x) { document.body.classList.remove("open"); return; }
+  var d = clear($("drawer")), lv = kind === "side" ? live(x.state) : x.state === "running";
+  d.appendChild(h("div", "row", "", [pill(lv ? (x.state === "idle" ? "idle" : "running") : x.state), closeBtn()]));
+  d.appendChild(h("h2", "", kind === "side" ? x.description || x.id : x.title));
+  d.appendChild(h("div", "row", "", [x.model ? modelBadge(x.model) : null, h("span", "muted small", kind === "side" ? "Side agent" + (x.type ? " · " + x.type : "") + (x.background ? " · in the background" : "") : "Background command")]));
+  var box = h("div", "sumry spaced " + (x.state === "failed" ? "failed" : x.state === "idle" ? "idle" : lv ? "" : "done"));
+  function row(k, v) { if (v) box.appendChild(h("p", "", "", [h("span", "k", k), document.createTextNode(v)])); }
+  row("Part of task", stepOfWork(kind, id));
+  if (kind === "side") {
+    row("Brief", x.brief);
+    row("Doing now", lv ? doing(x) : "");
+    row("Last said", lv && x.said ? "“" + x.said + "”" : "");
+    row("Result", lv ? "" : x.result || (x.state === "done" ? "Finished; no result text was recorded." : ""));
+    row("Started", x.start ? ago(x.start) : "");
+    row(lv ? "Last activity" : "Ended", ago(lv ? x.activity : x.end || x.activity));
+    row("Work so far", (x.tools ? x.tools + " tool calls" : "") + (x.tools && x.outTokens ? ", " : "") + (x.outTokens ? tok(x.outTokens) + " tokens written" : ""));
+  } else {
+    row("Status", lv ? "Running for " + dur(Date.now() - (x.start || Date.now())) + "." : (x.state === "done" ? "Finished " : x.state === "failed" ? "Failed " : "Stopped ") + ago(x.end || x.start) + ".");
+    row("Result", x.summary);
+    row("Command", x.cmd);
+    row("Started", x.start ? ago(x.start) : "");
+  }
+  d.appendChild(box);
+  document.body.classList.add("open");
 }
 function drawTrains() {
   var t = clear($("trains")), trains = (data.runs || []).filter(function (r) { return r.isTrain; });
@@ -1036,8 +1275,7 @@ function summaryOf(l) {
   rows.push(["Status", status]);
   if (liveAgents.length) {
     liveAgents.slice(0, 4).forEach(function (a) {
-      var doing = a.said ? "\u201c" + a.said + "\u201d" : (plainTool(a.now) ? "is " + plainTool(a.now) + "." : "is working.");
-      rows.push([(a.label || a.id) + (a.model ? " \u00b7 " + modelName(a.model) : ""), doing]);
+      rows.push([(a.label || a.id) + (a.model ? " \u00b7 " + modelName(a.model) : ""), "Now: " + doing(a) + "." + (a.said ? "\nLast said: \u201c" + firstSentences(a.said, 300) + "\u201d" : "")]);
     });
   }
   var ag = r.agents, totTools = ag.reduce(function (n, x) { return n + (x.tools || 0); }, 0), totCtx = ag.reduce(function (n, x) { return n + (x.tokens || 0); }, 0), totOut = ag.reduce(function (n, x) { return n + (x.outTokens || 0); }, 0);
@@ -1119,8 +1357,9 @@ function usageCols(a) {
   return g;
 }
 function agentDrawer(key) {
-  var i = key.lastIndexOf("|"), lk = key.slice(6, i), id = key.slice(i + 1), l = findSubject(lk);
-  var a = l && l.latest.agents.filter(function (x) { return x.id === id; })[0];
+  var i = key.lastIndexOf("|"), lk = key.slice(6, i), id = key.slice(i + 1), l = findSubject(lk), a = null;
+  // the agent may belong to an earlier run of the lane (the lane was restarted): look through all of them
+  if (l) l.runs.some(function (r) { a = r.agents.filter(function (x) { return x.id === id; })[0] || null; return !!a; });
   if (!a) { document.body.classList.remove("open"); return; }
   var d = clear($("drawer")), back = h("button", "iconbtn", "", [icon("back"), document.createTextNode("Lane")]), close = closeBtn();
   back.dataset.key = "d:back";
@@ -1131,7 +1370,8 @@ function agentDrawer(key) {
   var box = h("div", "sumry spaced " + (a.state === "failed" ? "failed" : a.state === "idle" ? "idle" : a.state === "done" ? "done" : ""));
   function row(k, v) { if (v) box.appendChild(h("p", "", "", [h("span", "k", k), document.createTextNode(v)])); }
   var live_ = a.state === "running" || a.state === "idle";
-  row("Doing now", live_ ? (a.said ? "\u201c" + a.said + "\u201d" : (plainTool(a.now) ? "is " + plainTool(a.now) + "." : "")) : "");
+  row("Doing now", live_ ? doing(a) : "");
+  row("Last said", live_ && a.said ? "\u201c" + a.said + "\u201d" : "");
   box.appendChild(h("p", "", "", [h("span", "k", "Usage"), usageTable(a)]));
   row("Started", a.started ? ago(a.started) : "");
   row("Last activity", a.activity ? ago(a.activity) : "");
@@ -1143,7 +1383,7 @@ function agentDrawer(key) {
   document.body.classList.add("open");
 }
 function metaDrawer(kind) {
-  var d = clear($("drawer")), ld = data.lead || {}, adv = ld.advisor || {};
+  var d = clear($("drawer")), ld = curPlan().lead || data.lead || {}, adv = ld.advisor || {};
   var close = closeBtn();
   var box = h("div", "sumry " + (kind === "lead" ? (ld.state === "working" ? "running" : "idle") : "done"));
   function row(k, v) { if (v) box.appendChild(h("p", "", "", [h("span", "k", k), document.createTextNode(v)])); }
@@ -1170,9 +1410,9 @@ function metaDrawer(kind) {
     row("Status", ld.state === "working" ? "Working now, last activity " + ago(ld.activity) + "." : "Waiting for you or for background jobs; last activity " + ago(ld.activity) + ".");
     row("Current task", ld.step);
     row("Last said", ld.said ? "\u201c" + ld.said + "\u201d" : "");
-    row("Last action", ld.now ? plainTool(ld.now) : "");
-    var items = (data.plan && data.plan.items) || [];
-    if (items.length) row("Task list", items.map(function (i) { var ss = stepState(i); return (ss.status === "completed" ? "\u2713 " : ss.status === "ended" ? "\u25a0 " : ss.status === "in_progress" ? "\u25b6 " : "\u25cb ") + i.content + (ss.auto ? " (" + ss.note + ")" : ""); }).join("\n"));
+    row("Last action", ld.nowText || plainTool(ld.now));
+    var qs = queueOf(curPlan()).steps, mark = { now: "\u25b6 ", wait: "! ", next: "\u25cb ", done: "\u2713 " };
+    if (qs.length) row("Task list", qs.map(function (s) { return mark[s.sec] + s.item.content + (s.d.note ? " (" + s.d.note + ")" : ""); }).join("\n"));
   }
   if (kind !== "advisor") d.appendChild(box);
   document.body.classList.add("open");
@@ -1180,6 +1420,7 @@ function metaDrawer(kind) {
 function drawDrawer() {
   if (openKey === "advisor" || openKey === "lead") return metaDrawer(openKey);
   if (openKey && openKey.indexOf("agent:") === 0) return agentDrawer(openKey);
+  if (openKey && (openKey.indexOf("side:") === 0 || openKey.indexOf("task:") === 0)) return sideDrawer(openKey);
   var d = clear($("drawer")), l = findSubject(openKey);
   if (!l) { document.body.classList.remove("open"); return; }
   var r = l.latest;
@@ -1261,8 +1502,10 @@ var focus = { step: "", hover: "", pending: false, unfold: false };
 function selectStep(text) {
   if (focus.step === text) { clearFocus(); return; }
   focus = { step: text, hover: "", pending: true, unfold: true };
-  var tokens = wordSet(text);
-  if (lanesOf(data.runs || []).some(function (l) { return matchRun(l.latest, tokens) && !visible(l); })) filter = "all";
+  // a lane the step names that the current tab hides: show all, so the step's boxes can be found
+  var s = queueOf(curPlan()).steps.filter(function (x) { return x.item.content === text; })[0], ids = {};
+  (s ? s.runs : []).forEach(function (r) { ids[r.id] = 1; });
+  if (lanesOf(data.runs || []).some(function (l) { return l.runs.some(function (r) { return ids[r.id]; }) && !visible(l); })) filter = "all";
   draw();
 }
 function clearFocus() { focus = { step: "", hover: "", pending: false, unfold: false }; draw(); }
@@ -1329,7 +1572,7 @@ function agentNode(a, key) {
   var kids = (a.helpers || []).map(function (x) {
     return { id: key + "|" + a.id + "|h" + x.desc, kind: "helper", w: 220, h: 34, label: x.desc, sub: x.done ? "helper · finished" : "helper · working", state: x.done ? "done" : "running", model: x.model, children: [] };
   });
-  var loopy = a.repeat >= 4, sub = a.state === "failed" ? (a.error || "failed") : loopy ? "repeating the same call ×" + a.repeat : a.now ? plainTool(a.now) : (a.state === "done" ? "finished" : a.state);
+  var loopy = a.repeat >= 4, sub = live(a.state) || a.state === "failed" ? doing(a) : a.state === "done" ? "finished" : a.state;
   // agents are listed under their stage (the stage is their heading), so a live lane needs one column less
   return { id: key + "|" + a.id, kind: "agent", w: 250, h: 46, label: a.label || a.id, sub: sub, loop: loopy, state: a.state,
     model: a.model, key: "agent:" + key + "|" + a.id, children: kids, foldDefault: false, below: true, indent: 14 };
@@ -1370,7 +1613,7 @@ function sizeLane(n) {
 }
 function sizeTask(n) { n.lines = wrapLines(n.label, n.w - PX - 12, 2, 7.0); n.h = n.lines.length > 1 ? 66 : 50; return n; }
 function buildTree() {
-  var runs = data.runs || [], lead = data.lead;
+  var runs = data.runs || [], cp = curPlan(), lead = cp.lead || data.lead;
   var root = { id: "lead", kind: "lead", w: 290, h: 86, key: "lead", state: lead && lead.state === "working" ? "running" : "idle", children: [] };
   root.label = "Lead" + (lead && lead.model ? ", " + modelName(lead.model) : "");
   root.model = lead ? lead.model : "";
@@ -1389,7 +1632,7 @@ function buildTree() {
   lanes.filter(visible).forEach(function (l) {
     var r = l.latest, eta = boxEta(r), gl = gitLine(l);
     var sig = l.state + "|" + r.agents.map(function (a) { return a.id + a.state; }).join(",") + "|" + r.phases.map(function (p) { return p.state; }).join(",");
-    units.push({ run: r, node: sizeLane({ id: l.key, kind: "lane", w: 300, label: l.lane, sub: l.title, sub2: (eta ? eta + " · " : "") + (live(l.state) ? "active " + ago(r.activity) : "finished " + ago(r.end || r.activity)),
+    units.push({ run: r, runs: l.runs, node: sizeLane({ id: l.key, kind: "lane", w: 300, label: l.lane, sub: l.title, sub2: (eta ? eta + " · " : "") + (live(l.state) ? "active " + ago(r.activity) : "finished " + ago(r.end || r.activity)),
       sub3: gl ? gl.textContent : "", prog: progOf(r), sig: sig,
       sub4: l.runs.length > 1 ? l.runs.length + " runs: " + Object.keys(l.runs.reduce(function (c, x) { c[x.state] = (c[x.state] || 0) + 1; return c; }, {})).map(function (k) { return l.runs.filter(function (x) { return x.state === k; }).length + " " + k; }).join(", ") : "",
       state: l.state, key: l.key, foldDefault: !live(l.state), children: stageNodes(r, l.key) }) });
@@ -1402,19 +1645,22 @@ function buildTree() {
       sig: r.state + "|" + r.agents.map(function (a) { return a.id + a.state; }).join(","),
       state: r.state, key: key, foldDefault: !live(r.state), children: stageNodes(r, key) }) });
   });
-  var items = (data.plan && data.plan.items) || [];
+  var q = queueOf(cp), items = q.steps.map(function (s) { return s.item; }), sess = cp.session || "";
   function tag(n, t) { n.task = t; n.children.forEach(function (c) { tag(c, t); }); }
   if (items.length) {
-    var groups = items.map(function (i) { return { item: i, ss: stepState(i), tokens: wordSet(i.content), units: [] }; }), other = [];
+    // each lane sits under the step its runs belong to (the collector's match; for an older status.json the page's word match)
+    var groups = q.steps.map(function (s) { return { item: s.item, s: s, units: [] }; }), other = [], elsewhere = {}, owner = {};
+    q.steps.forEach(function (s, k) { s.runs.forEach(function (r) { if (!(r.id in owner)) owner[r.id] = k; }); });
     units.forEach(function (u) {
-      var g = groups.filter(function (x) { return matchRun(u.run, x.tokens); })[0];
-      (g ? g.units : other).push(u);
+      var k = (u.runs || [u.run]).map(function (r) { return owner[r.id]; }).filter(function (x) { return x !== undefined; })[0];
+      if (k !== undefined) groups[k].units.push(u);
+      else if (sess && u.run.session && u.run.session !== sess) (elsewhere[u.run.session] = elsewhere[u.run.session] || []).push(u);
+      else other.push(u);
     });
-    // the tabs filter the lead's steps too: Live only keeps what is in progress or has a live lane; Needs attention keeps open decisions and steps that need a person, or have a failed, stopped or idle lane
+    // the tabs filter the lead's steps too: Live only keeps what is running or has a live lane; Needs attention keeps what waits on you, or has a failed, stopped or idle lane
     function keepStep(g) {
-      var isOpen = g.ss.status !== "completed";
-      if (filter === "live") return g.ss.status === "in_progress" || g.units.some(function (u) { return live(u.run.state); });
-      if (filter === "attention") return g.units.some(function (u) { return u.run.state === "failed" || u.run.state === "killed" || u.run.state === "idle"; }) || (isOpen && /^(decision|needs a person|needs you)/i.test(g.item.content));
+      if (filter === "live") return g.s.sec === "now" || g.units.some(function (u) { return live(u.run.state); });
+      if (filter === "attention") return g.s.sec === "wait" || g.units.some(function (u) { return u.run.state === "failed" || u.run.state === "killed" || u.run.state === "idle"; });
       return true;
     }
     var stepsShown = groups.filter(keepStep).length;
@@ -1423,14 +1669,18 @@ function buildTree() {
     var stepNodes = [];
     groups.forEach(function (g, idx) {
       if (!keepStep(g)) return;
-      var liveN = g.units.filter(function (u) { return live(u.run.state); }), eta = stepEta(liveN.map(function (u) { return u.run; }), true);
-      var node = sizeTask({ id: "task|" + idx, kind: "task", w: 300, label: g.item.content,
-        state: g.ss.status === "in_progress" ? "running" : g.ss.status === "completed" ? "done" : g.ss.status === "ended" ? (g.ss.auto === "failed" ? "failed" : "killed") : "pending",
-        sub: (g.units.length ? g.units.length + (g.units.length > 1 ? " lanes" : " lane") : "no lanes yet") + (liveN.length ? " · " + liveN.length + " live" : "") + (eta ? " · " + eta : "") + (g.ss.auto ? " · " + g.ss.note : ""),
-        foldDefault: g.ss.status === "completed" && !liveN.length, children: g.units.map(function (u) { return u.node; }) });
+      var s = g.s, liveN = g.units.filter(function (u) { return live(u.run.state); }), eta = stepEta(liveN.map(function (u) { return u.run; }), true);
+      var extra = (s.d.side || []).length + (s.d.tasks || []).length;
+      g.units.sort(function (a, b) { return live(b.run.state) - live(a.run.state); });  // live lanes and trains first
+      // keyed by the step's text, so a fold the person chose stays with its step when the lead edits the list
+      var node = sizeTask({ id: "step|" + s.key, kind: "task", w: 300, label: g.item.content,
+        state: s.sec === "now" ? "running" : s.sec === "done" ? "done" : s.d.status === "failed" ? "failed" : s.d.status === "stopped" ? "killed" : s.sec === "wait" ? "idle" : "pending",
+        sub: (g.units.length ? g.units.length + (g.units.length > 1 ? " lanes" : " lane") : extra ? "" : "no lanes yet") + (extra ? (g.units.length ? " · " : "") + extra + (extra > 1 ? " side jobs" : " side job") : "") +
+          (liveN.length ? " · " + liveN.length + " live" : "") + (eta ? " · " + eta : "") + (s.d.note ? " · " + s.d.note : ""),
+        foldDefault: s.sec === "done" && !liveN.length, children: g.units.map(function (u) { return u.node; }) });
       // a finished step with no live lane folds to one slim line; unfolding it shows the full box and its lanes
       tag(node, g.item.content);
-      if (g.ss.status === "completed") { node.canSlim = true; if (isFolded(node)) { node.slim = true; node.h = SLIM_H; } }
+      if (s.sec === "done") { node.canSlim = true; if (isFolded(node)) { node.slim = true; node.h = SLIM_H; } }
       stepNodes.push(node);
     });
     // two or more slim steps in a row fold further into one chip ("3 done: ..."); unfolding it lists them under it
@@ -1456,14 +1706,30 @@ function buildTree() {
         sub: other.length + (other.length > 1 ? " lanes" : " lane"), foldDefault: false, children: other.map(function (u) { return u.node; }) });
       tag(on, "__other"); root.children.push(on);
     }
+    // lanes of the project's other active chats get a box of their own, so nothing live is left out
+    plansOf().concat(Object.keys(elsewhere).map(function (s) { return { session: s }; })).forEach(function (p) {
+      var us = elsewhere[p.session];
+      if (!us) return;
+      delete elsewhere[p.session];
+      if (filter === "live") us = us.filter(function (u) { return live(u.run.state); });
+      if (filter === "attention") us = us.filter(function (u) { return u.run.state === "failed" || u.run.state === "killed" || u.run.state === "idle"; });
+      if (!us.length) return;
+      var liveU = us.filter(function (u) { return live(u.run.state); }).length;
+      var cn = sizeTask({ id: "task|chat|" + p.session, kind: "task", w: 300, label: "Another chat: " + (p.title || String(p.session).slice(0, 8)),
+        state: liveU ? "running" : "done", sub: us.length + (us.length > 1 ? " lanes" : " lane") + (liveU ? " · " + liveU + " live" : ""), foldDefault: !liveU, children: us.map(function (u) { return u.node; }) });
+      tag(cn, "__chat" + p.session); root.children.push(cn);
+    });
   } else {
     units.forEach(function (u) { root.children.push(u.node); });
     stepInfo = "";
     var cntEl0 = $("laneCount"); if (cntEl0) cntEl0.textContent = countText(cntEl0.dataset.total, cntEl0.dataset.shown);
   }
-  var side = (data.side || []).filter(function (a) { return a.state !== "done" || Date.now() - a.activity < RECENT_MS.recent; });
+  var side = (data.side || []).filter(function (a) { return live(a.state) || Date.now() - a.activity < RECENT_MS.recent; });
   if (side.length) root.children.push({ id: "side", kind: "stage", w: 200, h: 30, label: "Side agents", sub: side.length + " started by the lead directly", state: side.some(function (a) { return a.state === "running"; }) ? "running" : "done",
-    foldDefault: false, children: side.slice(0, 10).map(function (a) { return { id: "side|" + a.id, kind: "agent", w: 250, h: 46, below: true, indent: 14, label: a.description || a.id, sub: a.state, state: a.state === "done" ? "done" : a.state, model: a.model, children: [] }; }) });
+    foldDefault: false, children: side.slice(0, 10).map(function (a) { return { id: "side|" + a.id, kind: "agent", w: 250, h: 46, below: true, indent: 14, label: a.description || a.id, sub: sideWhat(a), state: a.state, model: a.model, key: "side:" + a.id, children: [] }; }) });
+  var jobs = (data.tasks || []).filter(function (t) { return t.state === "running" || Date.now() - (t.end || t.start || 0) < 30 * 60e3; });
+  if (jobs.length) root.children.push({ id: "jobs", kind: "stage", w: 200, h: 30, label: "Background commands", sub: jobs.length + " started by the lead", state: jobs.some(function (t) { return t.state === "running"; }) ? "running" : "done",
+    foldDefault: false, children: jobs.slice(0, 8).map(function (t) { return { id: "job|" + t.id, kind: "agent", w: 250, h: 46, below: true, indent: 14, label: t.title, sub: jobWhat(t), state: t.state, key: "task:" + t.id, children: [] }; }) });
   return root;
 }
 var SLIM_H = 28, GAP_X = 36, GAP_Y = 8, CELL_GX = 14, CELL_GY = 8, TOGGLE_R = 10;
@@ -1652,6 +1918,8 @@ function nodeEl(n) {
 }
 function drawTreeView() {
   nextSig = {};
+  // a drag defers the redraw until it ends; one that never ended (its release went elsewhere) is dropped after a while
+  if (dragging && Date.now() - dragAt > 20000) resetDrag();
   if (dragging) { treeDirty = true; return; }
   var root = buildTree(), L = $("tvLinks"), N = $("tvNodes"), svg = $("treeSvg");
   $("treeView").classList.remove("wait");
@@ -1759,7 +2027,7 @@ function toggleFold(n) { var k = activeKey(); collapsedUser[n.id] = !isFolded(n)
 function activateNode(n) {
   if (n.slim || n.kind === "group") toggleFold(n);
   else if (n.key) openDrawer(n.key);
-  else if (n.kind === "task" && n.id !== "task|other") selectStep(n.task || n.label);
+  else if (n.kind === "task" && n.id.indexOf("step|") === 0) selectStep(n.task || n.label);
   else if (n.children.length) toggleFold(n);
 }
 // from 1050 px wide the CSS makes the tree box fill the window under the header; between 601 and 1049 px (side column
@@ -1780,15 +2048,28 @@ function treeResized() {
 }
 // the box also changes size without a window resize (the header gains a line, the column divider is released)
 if (window.ResizeObserver) new ResizeObserver(function () { cancelAnimationFrame(resizeRaf); resizeRaf = requestAnimationFrame(treeResized); }).observe($("treeSvg"));
+var dragAt = 0, resetDrag = function () {};
 (function initTree() {
   var svg = $("treeSvg"), ptrs = {}, startDist = 0, moved = 0, downTarget = null;
   function rel(e) { var b = svg.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; }
+  // forget every pointer and draw what arrived meanwhile: the release went somewhere else (another window, a menu)
+  resetDrag = function () {
+    ptrs = {}; startDist = 0; downTarget = null;
+    if (!dragging) return;
+    dragging = false; svg.classList.remove("drag");
+    if (treeDirty) { treeDirty = false; drawTreeView(); }
+  };
   svg.addEventListener("pointerdown", function (e) {
-    svg.setPointerCapture(e.pointerId); ptrs[e.pointerId] = rel(e); moved = 0; downTarget = e.target; dragging = true; svg.classList.add("drag");
+    if (e.pointerType === "mouse" && e.button !== 0) return;  // only the main button pans: a right or middle press may never report its release here
+    try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+    ptrs[e.pointerId] = rel(e); moved = 0; downTarget = e.target; dragging = true; dragAt = Date.now(); svg.classList.add("drag");
     var ids = Object.keys(ptrs); if (ids.length === 2) startDist = Math.hypot(ptrs[ids[0]].x - ptrs[ids[1]].x, ptrs[ids[0]].y - ptrs[ids[1]].y);
   });
+  svg.addEventListener("lostpointercapture", function (e) { if (ptrs[e.pointerId]) { delete ptrs[e.pointerId]; if (!Object.keys(ptrs).length) resetDrag(); } });
+  window.addEventListener("blur", function () { resetDrag(); });
   svg.addEventListener("pointermove", function (e) {
     if (!ptrs[e.pointerId]) return;
+    dragAt = Date.now();
     var now = rel(e), old = ptrs[e.pointerId], ids = Object.keys(ptrs);
     if (ids.length === 1) { vp.x += now.x - old.x; vp.y += now.y - old.y; moved += Math.abs(now.x - old.x) + Math.abs(now.y - old.y); if (moved >= 6) userMoved = true; applyVp(); }
     else if (ids.length === 2) {
@@ -2207,12 +2488,37 @@ function draw() {
   restoreScrolls(sc);
   refreshMoveBtns();
 }
-function drawAll() { drawHeader(); drawLanes(); sizeLayout(); drawTreeView(); drawNeed(); drawPlan(); drawBurn(); drawReady(); drawTrains(); drawSide(); drawMix(); drawWorktrees(); drawEvents(); if (openKey && !selectionIn($("drawer"))) { var s = $("drawer").scrollTop; drawDrawer(); $("drawer").scrollTop = s; } }
+// every part is drawn on its own: one that fails (an odd record) must not stop the rest of the page from updating
+var PARTS = [["header", function () { drawHeader(); }], ["lanes", function () { drawLanes(); sizeLayout(); }], ["tree", function () { drawTreeView(); }],
+  ["needs you", function () { drawNeed(); }], ["task list", function () { drawPlan(); }], ["burn", function () { drawBurn(); }], ["ready to merge", function () { drawReady(); }],
+  ["merge train", function () { drawTrains(); }], ["side agents", function () { drawSide(); }], ["model mix", function () { drawMix(); }],
+  ["worktrees", function () { drawWorktrees(); }], ["events", function () { drawEvents(); }],
+  // the open detail view waits while the person is selecting text in it, but not for long: one click on the resume
+  // command selects all of it, and that selection must not freeze the view
+  ["details", function () { if (openKey && !(selectionIn($("drawer")) && Date.now() - drawerSelAt < 15000)) { var s = $("drawer").scrollTop; drawDrawer(); $("drawer").scrollTop = s; } }]];
+var drawerSelAt = 0;
+document.addEventListener("selectionchange", function () { if (selectionIn($("drawer"))) drawerSelAt = Date.now(); });
+var drawFailed = [], lastDrawAt = 0;
+function drawAll() {
+  var failed = [];
+  lastDrawAt = Date.now();
+  PARTS.forEach(function (p) {
+    try { p[1](); } catch (e) { failed.push(p[0]); if (window.console) console.error("dashboard: drawing the " + p[0] + " failed", e); }
+  });
+  drawFailed = failed;
+  var old = $("drawFail");
+  if (old) old.parentNode.removeChild(old);
+  if (failed.length) { var b = h("div", "banner", "Could not draw: " + failed.join(", ") + ". The rest of the page is current; the browser console has the error."); b.id = "drawFail"; $("banners").appendChild(b); }
+}
 var lastRaw = "", failures = 0, dataChanged = false;
 function ingest(obj, key) {
   failures = 0;
   pausedHint = false;
-  if (key !== lastRaw) { lastRaw = key; data = obj; dataChanged = true; draw(); dataChanged = false; } else tickMeta();
+  // The snapshot's own time changes on every write: only a change in what it says redraws the page at once. The
+  // times the page works out itself ("running for 12m", "3m ago") still move: an unchanged page is redrawn every 30 s.
+  var k = String(key).replace(/"generated":\s*\d+/, "");
+  if (k !== lastRaw) { lastRaw = k; data = obj; dataChanged = true; draw(); dataChanged = false; }
+  else { data = obj; if (Date.now() - lastDrawAt > 30000) draw(); else tickMeta(); }
 }
 function poll() {
   fetch("status.json", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("collecting"); return r.text(); }).then(function (t) {
@@ -2270,7 +2576,7 @@ $("projSel").addEventListener("change", function () {
 });
 refreshNow = function () { poll(); pollProjects(); };
 poll();
-setInterval(poll, 5000);
+setInterval(poll, 3000);
 pollProjects();
 setInterval(pollProjects, 10000);
 /*SOURCE_END*/

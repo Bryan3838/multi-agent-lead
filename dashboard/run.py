@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Start the live dashboard: python run.py --project <repo> [flags]
 
-Refreshes status.json every 30 s in a background thread and serves the page on
-127.0.0.1. Costs no model tokens. Stop it with Ctrl+C (or by stopping its task).
+Refreshes status.json every 5 s in a background thread (git and process counts every 30 s, the slow part) and serves
+the page on 127.0.0.1. Costs no model tokens. Stop it with Ctrl+C (or by stopping its task).
 """
 import argparse
 import os
@@ -24,7 +24,8 @@ def main():
     status.add_arguments(ap)
     ap.add_argument("--port", type=int, default=0, help="port to bind; 0 (default) uses a stable port derived from the project folder, moving up if it is busy")
     ap.add_argument("--print-port", action="store_true", help="print the default port for --project and exit (use it to fill in a launch.json entry)")
-    ap.add_argument("--interval", type=float, default=30, help="seconds between status.json writes")
+    ap.add_argument("--interval", type=float, default=5, help="seconds between status.json writes (git is refreshed every --git-interval)")
+    ap.set_defaults(git_interval=30)
     ap.add_argument("--out-dir", default="", help="where status.json goes (default: a per-project folder in the temp dir)")
     ap.add_argument("--open", action="store_true", help="open the page in the default browser")
     ap.add_argument("--strict-port", action="store_true", help="fail if the port is taken instead of using the next free one")

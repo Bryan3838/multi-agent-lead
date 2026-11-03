@@ -8,12 +8,12 @@ A live, local control-room page for long multi-agent Claude Code runs: a lead on
 python ~/.claude/skills/multi-agent-lead/dashboard/run.py --project <repo path>
 ```
 
-It prints a URL (default `http://127.0.0.1:8765/`, next free port if busy). Open it in any browser. `--project` defaults to the current directory. Python 3 standard library only.
+It prints a URL (default `http://127.0.0.1:8765/`, next free port if busy). Open it in any browser. `--project` defaults to the current directory. Python 3 standard library only. It rewrites `status.json` every 5 seconds (git and process counts, the slow part, every 30) and the page checks every 3 seconds, so a change shows within a few seconds.
 
 | Flag | Meaning |
 |---|---|
 | `--project` | The repo the Claude Code session ran in. Run records are found under `~/.claude/projects/<slug of that path>/`. |
-| `--session` | A session id, or `all`. Default: the newest session that has workflow runs. |
+| `--session` | A session id, or `all`. Default: every session active in the last 30 minutes (see Sessions). |
 | `--integration-branch` | Branch lanes are compared with (ahead/behind). Default `main`, else `master`, else the main worktree's branch. |
 | `--lane-field` | Workflow arg that names a lane. Default tries `br`, `branch`, `lane`, `title`, then the workflow name. |
 | `--usage-file` | Optional JSON for the usage bars (below). |
@@ -23,7 +23,7 @@ It prints a URL (default `http://127.0.0.1:8765/`, next free port if busy). Open
 | `--studio-limit`, `--studio-process` | Deprecated aliases of `--slot-limit` and `--slot-process`; they still work, so an older `.claude/launch.json` keeps running. |
 | `--handoff-file` | Notes file whose age is shown. |
 | `--idle-minutes` | No transcript activity for this long turns a running agent amber "idle" (default 10). |
-| `--port` (0 = stable per project), `--print-port`, `--interval`, `--out-dir`, `--open` | Port, seconds between refreshes (30), where `status.json` goes (a per-project temp folder), open the browser. |
+| `--port` (0 = stable per project), `--print-port`, `--interval`, `--git-interval`, `--out-dir`, `--open` | Port, seconds between refreshes (5), seconds between git and process-count refreshes (30), where `status.json` goes (a per-project temp folder), open the browser. |
 
 `python status.py --project <repo> --out x.json` writes one snapshot and exits.
 
@@ -31,27 +31,33 @@ It prints a URL (default `http://127.0.0.1:8765/`, next free port if busy). Open
 
 - `~/.claude/projects/<slug>/<session>/workflows/<runId>.json`: run summaries (status, args, result, phases, per-agent progress). Written when a run ends.
 - `.../subagents/workflows/<runId>/journal.jsonl`, `agent-<id>.meta.json`, `agent-<id>.jsonl`: used for runs still in progress. "Last activity" is the transcript's modified time.
-- The session transcript `<session>.jsonl`, read incrementally, only to find the title and args of runs that have no summary yet.
+- The session transcript `<session>.jsonl`, read incrementally (one replay per session, kept between refreshes), for:
+  - the title, args and launch time of runs that have no summary yet;
+  - the lead's task list (the app's `update_plan` and `wrap_up`, `TodoWrite`, or Claude Code's `TaskCreate`/`TaskUpdate`), with when each step first appeared and when it was ticked;
+  - background commands (Bash or PowerShell with `run_in_background`) from their launch to the `<task-notification>` that ends them, which a transcript writes as a user message, a `queue-operation` or an `attachment` line;
+  - side agents' briefs and results (the Agent tool call, and its result or notification).
+- A run whose args are empty (a per-lane copy of a workflow script with its args pasted in, as `scripts/regen-lanes.py` writes them) is named from the script's `const A = {...}` line, parsed as JSON and never run (only a `.js` file under 2 MB is read), else from its result's `br` and `title`.
 - `git worktree list`, `for-each-ref`, `rev-list --count`, `status --porcelain` (with `--no-optional-locks`; it never fetches or writes).
-- The lead's task list (the app's `update_plan` or `TodoWrite` calls), replayed from the same transcript. The panel is hidden when there is none.
 - Optional usage file, optional process count.
+
+`TaskCreate`/`TaskUpdate` support follows the documented shapes: `TaskCreate {subject, description}`, whose new id comes back in the result's structured output (`toolUseResult.task.id`), and `TaskUpdate {taskId, status, subject}`, where status is pending, in_progress, completed or deleted (which removes the step). These tools are opt-in on current models, so most sessions use the app's `update_plan`. The replay is tested on synthetic transcripts only. A lead that keeps no list at all still gets a queue: all its live work shows under Now.
 
 Everything read from the records is treated as untrusted text: clipped, stripped of control characters, put on the page with `textContent` only, never executed. The server binds to 127.0.0.1, serves only `/` and `/status.json`, rejects other Host headers and sends a strict Content-Security-Policy.
 
 ## Panels
 
 - **Needs you**: what a person has to act on, most urgent first: failed agents (a usage limit shows its reset text), agents repeating the same tool call, runs with no activity or past their usual time, a final check that says not ready, uncommitted or unpushed work in a finished lane, a 5-hour forecast near the limit. Lanes already merged (no commits ahead of the integration branch, or merged by a train) are skipped. Minor items (old stopped runs, open issues, stale notes) are behind a button. Click an item to open its lane.
-- **Task list**, **Burn and limits**, **Ready to merge**, **Merge train**, **Side agents**, **Model mix**, **Worktrees**, **Recent events**.
+- **Task list** (a queue, see below), **Burn and limits**, **Ready to merge**, **Merge train**, **Side agents and jobs**, **Model mix**, **Worktrees**, **Recent events**.
 - **Burn and limits**: tokens of agents that finished in the last hour and 5 hours (Claude Code's own run totals), what live agents have written so far (output tokens, read from their transcripts), tokens by model and the most expensive lanes. With `--usage-file` it also fits a rate to the percentages the running collector has seen: it needs about 10 minutes of samples, and the history is in memory only, so restarting `run.py` resets it.
 - **Ready to merge**: finished lanes whose branch has commits not in the integration branch, with whether a train already holds them, whether they are pushed, and the final check result.
-- **Side agents**: subagents the lead started directly with the Agent tool, outside a workflow (`<session>/subagents/agent-*.meta.json`).
+- **Side agents and jobs**: subagents the lead started directly with the Agent tool, outside a workflow (`<session>/subagents/agent-*.meta.json`), each with what it is doing now in plain words, or how it ended; then the lead's background commands: the running ones, and how the ones that ended in the last few hours ended. Click one for its brief, its current activity and last words, or its result.
 - **Model mix**: opus, sonnet, haiku and other agents working now and in the last 24 hours. Each agent's model is a small neutral badge; the bars use one shade per family, Opus in the accent colour, and hovering a segment gives its number. "default" means the record names no model.
-- Each running agent shows its latest tool call ("now") and a red "repeating" badge when 4 or more of its last 10 calls were identical.
+- Each running agent shows what it is doing in plain words (a command's own description, "reading config.py", "searching the code for …", "using the browser (navigate)") and a red "repeating" badge when 4 or more of its last 10 calls were identical.
 - The top bar shows how old the notes file is (`--handoff-file`, default `HANDOFF.md`, `NOTES.md` or `docs/HANDOFF.md`).
 
 ## Sessions
 
-By default the newest session that has workflow runs; if none has, the newest session with a transcript, so a project that only uses plain subagents and a task list still shows those panels. `--session <id>` picks one, `--session all` merges them.
+By default every session (chat) of the project that was active in the last 30 minutes is shown (up to 8), so live work in another chat is not left out. Active means its transcript, or an agent transcript of one of its newest runs or side agents, was written in that time (a lead that waits on long lanes writes nothing itself for a while). One of them is the main chat, whose task list and lead box lead the page: the newest-started active session that runs workflows, else side agents, else has a task list. That rule does not change when two leads take turns writing, so the page does not flip between them, and a new chat becomes the main one as soon as it starts its first workflow (or at once when the old chat has gone quiet). With two or more chats, the Task list shows a switcher; the choice is kept in the browser, and lanes of a chat that is not selected sit in the tree under "Another chat". With no active session it falls back to the newest session that has workflow runs, else the newest session. `--session <id>` picks one, `--session all` merges them all.
 
 ## Agent usage
 
@@ -75,15 +81,15 @@ python snapshot_tree.py --project <repo> --title "Project status" --out tree.htm
 ```
 
 - `--out` is `index.html`'s own drawing code (so it never drifts from the desktop page) with the local fetch removed. The page reads, in order, the Artifact db doc `status/current` (when `claude.use('db')` resolves, redrawing on every change), else the snapshot embedded in it.
-- `--data-out` is the body of that doc: a copy of the latest `status*.json` (from the running `run.py`) with local paths, URL credentials and key-like strings removed from every string, session ids shortened, and older runs, finished runs' agents and results, worktrees and long text cut down in steps (five levels) until it is under `--max-kb` (a db doc is capped at 256 KiB). Pass `--status` to name a status file instead of using the newest one for the project.
-- The page shows "updated N min ago", amber after 15 minutes, and has 44 px tap targets at phone width. It does not publish anything; refresh the doc by running the command again and writing `--data-out` to `status/current`.
+- `--data-out` is the body of that doc: a copy of the latest `status*.json` (from the running `run.py`) with local paths, URL credentials and key-like strings removed from every string, session ids shortened, and older runs, finished runs' agents and results, worktrees and long text cut down in steps (five levels) until it is under `--max-kb` (a db doc is capped at 256 KiB). The task lists keep each step's evidence as ids (`derived.runs`, `side`, `tasks`), and the page skips an id whose run was cut. Side agents keep their brief, activity and result, clipped, and background commands their title and result. Pass `--status` to name a status file instead of using the newest one for the project.
+- The page shows "updated N min ago", amber after 11 minutes (one missed 10-minute refresh), and has 44 px tap targets at phone width. It does not publish anything; refresh the doc by running the command again and writing `--data-out` to `status/current`.
 - It needs a recent `status*.json`, so keep `run.py` running (or point `--status` at a current file).
 
 ## States
 
 State marks: running (pulsing accent dot), done (green tick), failed (red dot and outline, error text shown, e.g. a usage limit), idle (amber dot and outline: running but quiet for `--idle-minutes`), stopped (grey square: the run was killed), pending or skipped (hollow ring, dashed box). Colour is kept to these small marks; box outlines are coloured only for failed, idle and repeating agents. A lane takes the state of its newest run; older runs of the same lane are summarised on the card and listed in the drawer. A run counts as failed when any agent errored, even if the run itself finished. Runs with no summary file and no live agent activity show as idle (for example when the session that launched them died).
 
-A run whose workflow name contains `train` goes to the **Merge train** panel instead of a lane: its branches (queued, then merged), gate and smoke state. Gate and smoke are read from `result.gate` / `result.smoke` (`ok`, `allFail` or `failed` fields); the train's `args.branches` and `args.k` supply the list and number. Click a lane or train box for the drawer: latest result text (`plainWords` or `summary`), tip, commits, open issues, agents, and the resume command shape `Workflow({scriptPath: "...", resumeFromRunId: "wf_..."})`.
+A merge train goes to the **Merge train** panel instead of a lane: a run whose workflow name contains `train` and that has a train's shape (`args.branches` or `args.k`, or a `merge` or `gate` in its result), or whose name says nothing else (`train-run`, `train-merge-only`). A lane named like `train9-gate-fixes` stays a lane. The panel shows its branches (queued, then merged), gate and smoke state. Gate and smoke are read from `result.gate` / `result.smoke` (`ok`, `allFail` or `failed` fields); the train's `args.branches` and `args.k` supply the list and number. Click a lane or train box for the drawer: latest result text (`plainWords` or `summary`), tip, commits, open issues, agents, and the resume command shape `Workflow({scriptPath: "...", resumeFromRunId: "wf_..."})`.
 
 ## Usage numbers
 
@@ -133,13 +139,32 @@ That appends one line to `<claude dir>/dashboard-advisor/<project slug>.jsonl` (
 
 ## The tree
 
-One view: the lead on the left (its model, working or waiting, its current task and last action), the advisor beside it (how many times it was consulted), then the task list steps (in the task list's order, with lanes the steps do not mention under "Other work"), then lanes and trains, their stages, their agents, and any helper subagents an agent started. Side agents the lead started directly hang off the lead. Each lane box shows its title, state, ETA, last activity, git state (tip, ahead/behind, uncommitted, not pushed), run history and a progress bar. Agent boxes show what they are doing in plain words, a red outline when one repeats the same call, and the error text when one failed. Links to running agents flow.
+One view: the lead on the left (its model, working or waiting, its current task and last action), the advisor beside it (how many times it was consulted), then the task list steps (in the task list's order, each in the state the queue gives it, with lanes no step names under "Other work" and another chat's lanes under "Another chat"), then lanes and trains, their stages, their agents, and any helper subagents an agent started. Side agents and background commands the lead started directly hang off the lead. Each lane box shows its title, state, ETA, last activity, git state (tip, ahead/behind, uncommitted, not pushed), run history and a progress bar. Agent boxes show what they are doing in plain words, a red outline when one repeats the same call, and the error text when one failed. Links to running agents flow.
 
 Drag to move, scroll or pinch to zoom, "Fit" to fit as much as possible (down to 40%; below 50% the small text hides and only names and states stay). Click a box for the plain-words summary and details, click the +/- on a box to fold or unfold it (finished lanes start folded). Click a task in the Task list: the tree unfolds the matching lanes, glides to them and dims the rest; click the background or "Clear highlight" to go back. A lane's box flashes once when its state changes.
 
-## Task list steps
+## Task list: a queue
 
-A step shows an ETA and its live agents when it names a running lane or train. The match is by words: every part of a lane's name (`weapons-3a` needs "weapons" and "3a"), the train number next to the word "train", or the agents' own labels. It is a guess from free text, so the badge also shows how many lanes matched. Click an agent to open its lane. The detail view of a lane says "Part of task" with the step it matched.
+The lead's task list is shown as a queue, and each step's place in it comes from the work it names, not only from the list (which a lead updates late, and which the app's end-of-turn wrap-up ticks off while lanes still run):
+
+- **Now**: steps the lead marked in progress, and steps it ticked while their work still runs ("still running"). Under each, one row per live agent with what it is doing in plain words, its model and how long ago it last did something; click a row for its lane. Then **Also running**: the chat's live work that no running step names (a lane, side agent or background command), including work that a step not started yet only mentions, so nothing running is ever missing from the list.
+- **Waiting on you**: open steps that start with "Decision", "Needs a person", "Needs you", "Waiting", "Blocked" or "Ask", and steps in progress whose lane failed.
+- **Next**: steps not started, in the lead's order, and steps in progress whose lane was stopped ("stopped": it can be resumed). A step not started is never shown as running, even when a lane it names runs: it may only mention that lane.
+- **Done** (folded; newest first): ticked steps, steps in progress whose lanes all finished ("finished, not ticked"), and finished steps the lead has since dropped from its list (the last 20), so Done is a history rather than whatever the list still holds.
+
+"Finished, not ticked" (and "lane failed", "stopped") is shown only when the lanes ended after the lead last changed the list: a lead that changed the list after that and kept the step open knows something the lanes do not (more work on the step, a retry). The lead's own value is kept in `plan.items[].status` and the evidence is in `plan.items[].derived` (`status`, `note`, the `runs`, `side` and `tasks` it owns, `live`); dropped finished steps are in `plan.done`. So the page only changes how a step is shown.
+
+Under the list, a note says when the list may be behind the work: a lane of the chat started or ended after the list last changed, and the list is over 10 minutes old.
+
+Which step a piece of work belongs to is worked out by the collector (`match.py`):
+- A run is named by its own names: its id (`wf_…`, or a prefix of it, which leads sometimes write into a step), its branch, its lane, the name before the colon in its title, and the workflow's name without a generic script prefix (`branch-run-mapgen` gives `mapgen`, used only when the args name nothing better). Names its description mentions and its agents' labels only add a little. A step matches a name written as is (`map-gen-pilot`, or joined up as `mapgenpilot`), or when every distinctive part of it is a word of the step (a one-letter last part counts, so `smoke-a` and `smoke-c` are not `smoke-b`); a step whose text starts with the name and a colon (`hud: fix the status bar`) is that name's own step, however short the name. A train matches "train 7", "train7" or "train #7".
+- When a run has no name that says anything (a lane called `train`), or a step only paraphrases it, its title's words count: three or more of its distinctive words, and most of them, in the step.
+- Each run goes to one step only: the best score, with a bonus for the step that is about the run; on a tie a live run goes to the step in progress or a step ticked while it clearly ran (by the end of a turn, or well after it began: a done line rewritten seconds after a launch is not that run's step), then to a step not started, and a finished run to the step ticked while it ran.
+- Only a step it overlaps in time: a run that ended before the step was written, or started after the step was ticked, belongs to some other step. Two exceptions for a step that names the run by an own name (in full or in short, as in "smoke a, c, d: done"): a done summary line written later ("x, y and z done") keeps the runs it names, and a step ticked by the end of a turn keeps a live run that started later, since the next turn often starts or resumes that lane, but only when no other step names that run. A step that is reworded a little keeps when it first appeared; a done step written as open again starts a new life.
+- Within a step, each lane counts by its newest run, so a retry that worked outranks the try that failed.
+- Side agents and background commands are matched by the hyphenated names in their description, or by all of its distinctive words together, never by one shared word; most show under Also running.
+
+Click a step to highlight and move to its boxes in the tree. The detail view of a lane says "Part of task" with its step. A status.json from an older collector has no `derived` field: the page then falls back to its own word match.
 
 ## Detail view
 
@@ -163,9 +188,15 @@ Burn and limits (rewritten): one bar each for the 5-hour window and the weekly l
 
 The Burn and limits panel no longer repeats the usage bars (they are in the header): it shows only a burn forecast line when one is reliable, what is running now, finished tokens, the model mix and the most expensive lanes.
 
-The filter tabs also filter the lead's task-list steps in the tree: Live keeps the in-progress steps and steps with a live lane, Attention keeps open Decision / Needs a person steps and steps with a failed, stopped or idle lane, and the other tabs keep every step.
+The filter tabs also filter the lead's task-list steps in the tree: Live keeps the steps in Now and steps with a live lane, Attention keeps the steps waiting on you and steps with a failed, stopped or idle lane, and the other tabs keep every step.
+
+Drawing: each part of the page (header, tree, each side panel, the open detail view) is drawn on its own, so one that fails on an odd record leaves the rest current and a banner names the part (the browser console has the error). Only the main mouse button pans the tree; a drag whose release never arrives (the window lost focus, a menu took the click) is dropped at once on blur or capture loss, or after 20 seconds, so the tree never stops redrawing. A new snapshot redraws the page only when what it says changed; a full redraw takes tens of milliseconds.
 
 Layout and density: the side column's panels can be reordered (drag grip, up and down buttons, Alt+Arrow), resized by their bottom edge (Shift+Arrow), folded, and the column's width set by a divider; "Reset layout" restores the default; the layout is saved in localStorage and survives live redraws. Finished task steps draw as one-line boxes (consecutive ones merge into a "N done" chip), the tree fits to its content, and on desktop widths the page fills the window height and only the tree box and the side column scroll. A live run with no ETA says "no ETA yet"; an ETA needs 2 finished agents of the same phase.
+
+## Tests
+
+`python -m unittest discover -s tests -v` (from this folder) runs the collector against synthetic sessions: the task-list replay (a wrap-up with a lane still running, a run started after its step was ticked, a step reworded, the Task tools), one run per step, lanes named from args baked into a script copy, two active chats, background commands ending in each transcript shape, side agents, plain-words activity and the phone export. Every record in them is made up; none comes from a real project.
 
 ## Look
 
