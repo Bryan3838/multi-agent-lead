@@ -616,13 +616,15 @@ function drawHeader() {
     hs.title = data.handoff.name + " was last changed " + ago(data.handoff.updated) + (stale ? ", while agents are working" : "");
     aux.push(hs);
   }
-  var slots = data.slots || data.studio;
-  if (slots && slots.limit != null) {
-    var over = slots.count != null && slots.count >= slots.limit;
-    var ss = h("span", "stat" + (over ? " bad" : ""), "", [icon("slots"), h("b", "", slots.count == null ? "?" : slots.count + "/" + slots.limit), document.createTextNode(slots.label || "Slots")]);
-    ss.title = (slots.label || "Slots") + " in use, of the limit" + (slots.count == null ? " (the count is unknown: no process name was given)" : "");
+  (data.slotList || (data.slots || data.studio ? [data.slots || data.studio] : [])).forEach(function (slots) {
+    if (!slots || (slots.limit == null && slots.count == null)) return;
+    if (slots.count === 0) return;
+    var over = slots.limit != null && slots.count != null && slots.count >= slots.limit;
+    var mem = slots.mb != null && slots.mb >= 512 ? " " + (slots.mb / 1024).toFixed(1) + " GB" : "";
+    var ss = h("span", "stat" + (over ? " bad" : ""), "", [icon("slots"), h("b", "", slots.count == null ? "?" : slots.limit != null ? slots.count + "/" + slots.limit : String(slots.count)), document.createTextNode((slots.label || "Slots") + mem)]);
+    ss.title = (slots.label || "Slots") + " running" + (slots.limit != null ? ", of the limit " + slots.limit : "") + (slots.mb != null ? "; " + (slots.mb / 1024).toFixed(1) + " GB of memory" : "") + (slots.count == null ? " (the count is unknown)" : "");
     aux.push(ss);
-  }
+  });
   if (aux.length) { st.appendChild(h("span", "vsep")); aux.forEach(function (x) { st.appendChild(x); }); }
   var bars = clear($("bars"));
   var u = data.usage;

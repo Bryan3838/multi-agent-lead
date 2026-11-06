@@ -180,6 +180,7 @@ def build_data(snap, title, cap):
     short = {s: s[:8] for s in sessions}
     raw_slots = snap.get("slots") or snap.get("studio")
     slots = {"count": raw_slots.get("count"), "limit": raw_slots.get("limit"), "label": clean(raw_slots.get("label"), 20)} if isinstance(raw_slots, dict) and raw_slots else None
+    slot_list = [{"count": x.get("count"), "limit": x.get("limit"), "mb": x.get("mb"), "label": clean(x.get("label"), 20)} for x in (snap.get("slotList") or []) if isinstance(x, dict)]
 
     def rk(key):
         key = str(key or "")
@@ -251,6 +252,7 @@ def build_data(snap, title, cap):
         "attention": [{"sev": clean(x.get("sev"), 6), "kind": clean(x.get("kind"), 16), "key": rk(x.get("key")), "lane": clean(x.get("lane"), 50), "text": clean(x.get("text"), 220)}
                       for x in (snap.get("attention") or [])[:25]],
         "slots": slots,
+        "slotList": slot_list,
         "studio": slots,  # copy of "slots" for one version, so an older page still renders it
     }
     return scrub(data)

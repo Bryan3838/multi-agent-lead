@@ -11,6 +11,8 @@ Usage as a script (one snapshot):  python status.py --project <repo> [--out stat
 The long-running loop lives in run.py.
 """
 import argparse
+import csv
+import fnmatch
 from datetime import datetime, timezone
 import difflib
 import glob
@@ -1324,6 +1326,61 @@ def count_processes(name):
         return None
 
 
+def process_table():
+    """(name without .exe, memory in MB) of every running process, from one listing; None when it can't be read."""
+    rows = []
+    try:
+        if os.name == "nt":
+            p = subprocess.run(["tasklist", "/NH", "/FO", "CSV"], capture_output=True, text=True, timeout=20)
+            for row in csv.reader(p.stdout.splitlines()):
+                if len(row) >= 5:
+                    mem = re.sub(r"[^0-9]", "", row[4])
+                    rows.append((re.sub(r"(?i)\.exe$", "", row[0]), int(mem) / 1024.0 if mem else 0.0))
+        else:
+            p = subprocess.run(["ps", "-A", "-o", "rss=,comm="], capture_output=True, text=True, timeout=20)
+            for line in p.stdout.splitlines():
+                parts = line.strip().split(None, 1)
+                if len(parts) == 2:
+                    rows.append((os.path.basename(parts[1]), as_int(parts[0]) / 1024.0))
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+    return rows
+
+
+def slot_specs(opts, project):
+    """The external programs the project uses, to be counted: [{label, patterns, limit}].
+    Sources, all merged: --slot LABEL=PROCESS[,PROCESS...][:LIMIT] (repeatable), the JSON file --slots-file (default
+    <project>/.claude/dashboard-slots.json, re-read on every refresh so the lead can edit it while the dashboard runs:
+    [{"label": "Blender", "process": "blender" or ["blender", "blender-launcher"], "limit": 8}], limit optional,
+    process names may use * and ?), and the older --slot-limit/--slot-label/--slot-process single counter."""
+    specs = []
+
+    def add(label, process, limit):
+        names = [x.strip() for x in ([process] if isinstance(process, str) else (process or [])) for x in str(x).split(",") if x.strip()]
+        if label and names:
+            specs.append({"label": str(label), "patterns": [re.sub(r"(?i)\.exe$", "", n) for n in names], "limit": as_int(limit, 0) or None})
+
+    for raw in getattr(opts, "slot", None) or []:
+        label, _, rest = str(raw).partition("=")
+        rest, _, limit = rest.rpartition(":") if ":" in rest else (rest, "", "")
+        add(label.strip(), rest, limit)
+    path = Path(opts.slots_file) if getattr(opts, "slots_file", "") else project / ".claude" / "dashboard-slots.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf8"))
+        for item in data if isinstance(data, list) else data.get("slots", []):
+            if isinstance(item, dict):
+                add(item.get("label"), item.get("process"), item.get("limit"))
+    except (OSError, ValueError):
+        pass
+    if getattr(opts, "slot_limit", 0) and getattr(opts, "slot_process", ""):
+        add(opts.slot_label, opts.slot_process, opts.slot_limit)
+    seen, out = set(), []
+    for s in specs:
+        if s["label"] not in seen:
+            seen.add(s["label"]); out.append(s)
+    return out
+
+
 # ------------------------------------------------------------- the snapshot
 _logs = {}  # transcript path -> SessionLog: one replay per session, kept between refreshes
 _slow = {}  # kind -> (time, inputs, value) for the slow parts (git, process counts)
@@ -1691,11 +1748,17 @@ def collect(opts):
         gap = now - u["sources"]["app"]
         if gap > 20 * 60000 and now - snap["lead"]["activity"] < 5 * 60000:
             u["appSilent"] = int(gap / 60000)
-    slots = None
-    if opts.slot_limit:
-        count = slow("slots", opts.slot_process, every, now, lambda: count_processes(opts.slot_process)) if opts.slot_process else None
-        slots = {"count": count, "limit": opts.slot_limit, "label": clip(opts.slot_label, 30)}
-    snap["slots"] = slots
+    slot_list = []
+    specs = slot_specs(opts, project)
+    if specs:
+        table = slow("proctable", "all", every, now, process_table)
+        for s in specs:
+            rows = None if table is None else [r for r in table if any(fnmatch.fnmatch(r[0].lower(), pat.lower()) for pat in s["patterns"])]
+            slot_list.append({"label": clip(s["label"], 30), "count": None if rows is None else len(rows), "limit": s["limit"],
+                              "mb": None if rows is None else int(sum(r[1] for r in rows))})
+    slots = slot_list[0] if slot_list else None
+    snap["slotList"] = slot_list
+    snap["slots"] = slots  # the first counter alone, for an older page
     snap["studio"] = slots  # copy of "slots" for one version, so an older page still renders it
     prune_caches()
     return snap
@@ -1709,7 +1772,9 @@ def add_arguments(ap):
     ap.add_argument("--lane-field", default="", help="workflow arg that names a lane (default br, branch, lane, title)")
     ap.add_argument("--plan-usage-history", default="", help="the Claude app's plan-usage-history.json (default: found by searching the app data folders)")
     ap.add_argument("--usage-file", default="", help="usage JSON (default: <claude dir>/dashboard-usage.json, shared by all projects)")
-    ap.add_argument("--slot-limit", dest="slot_limit", type=int, default=0, help="show the count of used slots (for example browser windows, test devices, licences, app instances) against this limit")
+    ap.add_argument("--slot", action="append", default=[], metavar="LABEL=PROCESS[,PROCESS][:LIMIT]", help="count a running external program (repeatable): Studio=RobloxStudioBeta:11 Blender=blender:8 Codex=codex; the limit is optional, names may use * and ?; also read from <project>/.claude/dashboard-slots.json")
+    ap.add_argument("--slots-file", default="", help="JSON file listing the programs to count (default <project>/.claude/dashboard-slots.json)")
+    ap.add_argument("--slot-limit", dest="slot_limit", type=int, default=0, help="(older single counter) show the count of used slots (for example browser windows, test devices, licences, app instances) against this limit")
     ap.add_argument("--slot-label", default="Slots", help="name shown for the slot counter (for example Browsers or Test devices)")
     ap.add_argument("--slot-process", dest="slot_process", default="", help="process name counted for --slot-limit (required with it; empty shows the count as unknown)")
     # deprecated aliases, kept so an existing launch.json keeps working

@@ -20,6 +20,8 @@ It prints a URL (default `http://127.0.0.1:8765/`, next free port if busy). Open
 | `--slot-limit N` | Show a counter of used slots against N. A slot is a limited resource the project shares between agents, for example browser windows, test devices, licences or app instances. The count is the number of running processes named by `--slot-process` (no default: name the process to count; without it the count shows as unknown). It only displays; it enforces nothing. |
 | `--slot-label NAME` | Name shown next to the counter (default `Slots`; for example `Browsers` or `Test devices`). |
 | `--slot-process NAME` | Process name counted for `--slot-limit`. |
+| `--slot LABEL=PROCESS[,PROCESS][:LIMIT]` | Count a running external program (repeatable), for example `--slot Studio=RobloxStudioBeta:11 --slot Blender=blender:8 --slot Codex=codex`. The limit is optional; names may use `*` and `?`. The page shows `used/limit Label` and the memory the processes hold; a program with nothing running (`0/8`) is hidden until something starts. |
+| `--slots-file FILE` | JSON list `[{"label": "Blender", "process": "blender", "limit": 8}]` of programs to count; default `<project>/.claude/dashboard-slots.json`, re-read on every refresh, so entries can be added while the dashboard runs. |
 | `--studio-limit`, `--studio-process` | Deprecated aliases of `--slot-limit` and `--slot-process`; they still work, so an older `.claude/launch.json` keeps running. |
 | `--handoff-file` | Notes file whose age is shown. |
 | `--idle-minutes` | No transcript activity for this long turns a running agent amber "idle" (default 10). |
